@@ -84,7 +84,16 @@ const App: React.FC = () => {
     return saved ? JSON.parse(saved) : getSeededPreferences();
   });
 
-  const [activeFriendId, setActiveFriendId] = useState<string>('me');
+  const [myFriendId, setMyFriendId] = useState<string | null>(() => {
+    return localStorage.getItem('lollasync_my_friend_id');
+  });
+  const [showWelcomeModal, setShowWelcomeModal] = useState<boolean>(() => {
+    return !localStorage.getItem('lollasync_my_friend_id');
+  });
+
+  const [activeFriendId, setActiveFriendId] = useState<string>(() => {
+    return localStorage.getItem('lollasync_my_friend_id') || 'me';
+  });
   const [activeDay, setActiveDay] = useState<'Thursday' | 'Friday' | 'Saturday' | 'Sunday'>('Thursday');
   const [viewMode, setViewMode] = useState<'lineup' | 'personal' | 'squad'>('lineup');
   const [shareStatus, setShareStatus] = useState<string>('Share Squad');
@@ -409,6 +418,7 @@ const App: React.FC = () => {
             setActiveFriendId={setActiveFriendId}
             onAddFriend={handleAddFriend}
             onRemoveFriend={handleRemoveFriend}
+            myFriendId={myFriendId}
           />
 
 
@@ -519,6 +529,7 @@ const App: React.FC = () => {
               friends={friends}
               groupPreferences={groupPreferences}
               onSetPreference={handleSetPreference}
+              myFriendId={myFriendId}
             />
           )}
 
@@ -549,6 +560,94 @@ const App: React.FC = () => {
       <footer style={{ marginTop: 'auto', paddingTop: '40px', paddingBottom: '20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
         <p>LollaSync &copy; 2026. Designed for festival squad coordination. Optimize responsibly!</p>
       </footer>
+      {/* Welcome Modal Overlay */}
+      {showWelcomeModal && (
+        <div className="welcome-modal-overlay">
+          <div className="glass-panel welcome-modal">
+            <span style={{ fontSize: '3.5rem' }}>🎸</span>
+            <h2 className="brand-title" style={{ fontSize: '1.8rem', margin: '12px 0 6px 0', textTransform: 'none', background: 'var(--gradient-primary)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Welcome to LollaSync!</h2>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '24px', textAlign: 'center', maxWidth: '340px', lineHeight: '1.4' }}>
+              Enter your name to connect with the squad and lock in your Lollapalooza schedule.
+            </p>
+            
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              const form = e.currentTarget;
+              const nameInput = form.elements.namedItem('username') as HTMLInputElement;
+              const name = nameInput.value.trim();
+              if (!name) return;
+
+              // Check if a friend with this name already exists (case-insensitive)
+              const existingFriend = friends.find(f => f.name.toLowerCase() === name.toLowerCase());
+              
+              if (existingFriend) {
+                // Associate with existing friend profile
+                setMyFriendId(existingFriend.id);
+                localStorage.setItem('lollasync_my_friend_id', existingFriend.id);
+                setActiveFriendId(existingFriend.id);
+                setShowWelcomeModal(false);
+              } else {
+                // Rename the default "Me (You)" profile if it's untouched
+                const meFriend = friends.find(f => f.id === 'me');
+                if (meFriend && meFriend.name === 'Me (You)') {
+                  const updatedFriends = friends.map(f => f.id === 'me' ? { ...f, name: name, avatar: name.slice(0, 2).toUpperCase() } : f);
+                  setFriends(updatedFriends);
+                  setMyFriendId('me');
+                  localStorage.setItem('lollasync_my_friend_id', 'me');
+                  setActiveFriendId('me');
+                  setShowWelcomeModal(false);
+                  if (sheetsUrl && syncEnabled) {
+                    saveStateToSheets(sheetsUrl, updatedFriends, groupPreferences);
+                  }
+                } else {
+                  // Create a new friend
+                  const newId = name.toLowerCase().replace(/\s+/g, '_') + '_' + Date.now();
+                  const initials = name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+                  const newFriend: Friend = {
+                    id: newId,
+                    name: name,
+                    color: `hsl(${Math.random() * 360}, 85%, 65%)`,
+                    avatar: initials || name[0].toUpperCase()
+                  };
+                  const updatedFriends = [...friends, newFriend];
+                  setFriends(updatedFriends);
+                  setMyFriendId(newId);
+                  localStorage.setItem('lollasync_my_friend_id', newId);
+                  setActiveFriendId(newId);
+                  setShowWelcomeModal(false);
+                  if (sheetsUrl && syncEnabled) {
+                    saveStateToSheets(sheetsUrl, updatedFriends, groupPreferences);
+                  }
+                }
+              }
+            }} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <input
+                type="text"
+                name="username"
+                required
+                placeholder="Your Name (e.g. Erica, Alice, Bob)"
+                autoFocus
+                style={{
+                  width: '100%',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid var(--border-light)',
+                  borderRadius: '10px',
+                  padding: '12px 16px',
+                  color: '#fff',
+                  fontSize: '1rem',
+                  textAlign: 'center',
+                  fontFamily: 'var(--font-body)',
+                  outline: 'none',
+                  boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.2)'
+                }}
+              />
+              <button type="submit" className="btn btn-primary" style={{ padding: '12px', justifyContent: 'center', fontSize: '1rem', width: '100%' }}>
+                Join Squad 🚀
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

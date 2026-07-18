@@ -9,6 +9,7 @@ interface ArtistListProps {
   friends: Friend[];
   groupPreferences: GroupPreferences;
   onSetPreference: (friendId: string, artistId: string, level: HypeLevel) => void;
+  myFriendId: string | null;
 }
 
 export const ArtistList: React.FC<ArtistListProps> = ({
@@ -16,7 +17,8 @@ export const ArtistList: React.FC<ArtistListProps> = ({
   activeFriend,
   friends,
   groupPreferences,
-  onSetPreference
+  onSetPreference,
+  myFriendId
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStage, setSelectedStage] = useState('All');
@@ -128,27 +130,51 @@ export const ArtistList: React.FC<ArtistListProps> = ({
       </div>
 
       {/* Selected Friend Status Tag */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255, 255, 255, 0.02)', padding: '10px 16px', borderRadius: '8px', border: '1px dashed var(--border-light)' }}>
-        <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-          Setting preferences for:
-        </span>
-        <span 
-          style={{ 
-            fontSize: '0.85rem', 
-            fontWeight: 700, 
-            color: activeFriend.color, 
-            background: `${activeFriend.color}15`, 
-            padding: '2px 8px', 
-            borderRadius: '4px',
-            border: `1px solid ${activeFriend.color}40`,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px'
-          }}
-        >
-          <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: activeFriend.color }} />
-          {activeFriend.name}
-        </span>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', background: 'rgba(255, 255, 255, 0.02)', padding: '10px 16px', borderRadius: '8px', border: '1px dashed var(--border-light)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+            {activeFriend.id === myFriendId ? 'Setting preferences for:' : 'Viewing preferences for:'}
+          </span>
+          <span 
+            style={{ 
+              fontSize: '0.85rem', 
+              fontWeight: 700, 
+              color: activeFriend.color, 
+              background: `${activeFriend.color}15`, 
+              padding: '2px 8px', 
+              borderRadius: '4px',
+              border: `1px solid ${activeFriend.color}40`,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: activeFriend.color }} />
+            {activeFriend.name}
+          </span>
+        </div>
+
+        {activeFriend.id !== myFriendId && (
+          <span 
+            style={{ 
+              fontSize: '0.75rem', 
+              color: 'var(--neon-yellow)', 
+              background: 'rgba(255, 223, 0, 0.1)', 
+              padding: '4px 10px', 
+              borderRadius: '6px', 
+              border: '1px solid rgba(255, 223, 0, 0.2)', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '4px',
+              fontWeight: 600,
+              letterSpacing: '0.03em',
+              textTransform: 'uppercase'
+            }}
+            title="Only this user can edit their own schedule"
+          >
+            🔒 Read-Only
+          </span>
+        )}
       </div>
 
       {/* Artist Cards Container */}
@@ -208,40 +234,69 @@ export const ArtistList: React.FC<ArtistListProps> = ({
                 </div>
 
                 {/* Hype Selectors for Active Friend */}
-                <div className="hype-selector">
-                  <button
-                    onClick={() => onSetPreference(activeFriend.id, artist.id, activePref === 'must' ? 'none' : 'must')}
-                    className={`hype-btn ${activePref === 'must' ? 'active-must' : ''}`}
-                    title="Must See"
-                  >
-                    <Flame size={14} />
-                    <span>Must</span>
-                  </button>
-                  <button
-                    onClick={() => onSetPreference(activeFriend.id, artist.id, activePref === 'want' ? 'none' : 'want')}
-                    className={`hype-btn ${activePref === 'want' ? 'active-want' : ''}`}
-                    title="Would Like to See"
-                  >
-                    <Star size={14} />
-                    <span>Want</span>
-                  </button>
-                  <button
-                    onClick={() => onSetPreference(activeFriend.id, artist.id, activePref === 'maybe' ? 'none' : 'maybe')}
-                    className={`hype-btn ${activePref === 'maybe' ? 'active-maybe' : ''}`}
-                    title="If Convenient"
-                  >
-                    <Coffee size={14} />
-                    <span>Maybe</span>
-                  </button>
-                  <button
-                    onClick={() => onSetPreference(activeFriend.id, artist.id, activePref === 'none' ? 'none' : 'none')}
-                    className={`hype-btn ${activePref === 'none' ? 'active-none' : ''}`}
-                    title="Not Interested"
-                  >
-                    <EyeOff size={14} />
-                    <span>Skip</span>
-                  </button>
-                </div>
+                {activeFriend.id === myFriendId ? (
+                  <div className="hype-selector">
+                    <button
+                      onClick={() => onSetPreference(activeFriend.id, artist.id, activePref === 'must' ? 'none' : 'must')}
+                      className={`hype-btn ${activePref === 'must' ? 'active-must' : ''}`}
+                      title="Must See"
+                    >
+                      <Flame size={14} />
+                      <span>Must</span>
+                    </button>
+                    <button
+                      onClick={() => onSetPreference(activeFriend.id, artist.id, activePref === 'want' ? 'none' : 'want')}
+                      className={`hype-btn ${activePref === 'want' ? 'active-want' : ''}`}
+                      title="Would Like to See"
+                    >
+                      <Star size={14} />
+                      <span>Want</span>
+                    </button>
+                    <button
+                      onClick={() => onSetPreference(activeFriend.id, artist.id, activePref === 'maybe' ? 'none' : 'maybe')}
+                      className={`hype-btn ${activePref === 'maybe' ? 'active-maybe' : ''}`}
+                      title="If Convenient"
+                    >
+                      <Coffee size={14} />
+                      <span>Maybe</span>
+                    </button>
+                    <button
+                      onClick={() => onSetPreference(activeFriend.id, artist.id, activePref === 'none' ? 'none' : 'none')}
+                      className={`hype-btn ${activePref === 'none' ? 'active-none' : ''}`}
+                      title="Not Interested"
+                    >
+                      <EyeOff size={14} />
+                      <span>Skip</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="hype-selector" style={{ pointerEvents: 'none' }}>
+                    {activePref === 'must' && (
+                      <span className="read-only-badge must">
+                        <Flame size={14} />
+                        <span>Must See</span>
+                      </span>
+                    )}
+                    {activePref === 'want' && (
+                      <span className="read-only-badge want">
+                        <Star size={14} />
+                        <span>Want to See</span>
+                      </span>
+                    )}
+                    {activePref === 'maybe' && (
+                      <span className="read-only-badge maybe">
+                        <Coffee size={14} />
+                        <span>Maybe</span>
+                      </span>
+                    )}
+                    {activePref === 'none' && (
+                      <span className="read-only-badge none">
+                        <EyeOff size={14} />
+                        <span>Skipping</span>
+                      </span>
+                    )}
+                  </div>
+                )}
 
               </div>
             );

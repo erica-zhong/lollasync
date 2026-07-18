@@ -8,6 +8,7 @@ interface FriendSettingsProps {
   setActiveFriendId: (id: string) => void;
   onAddFriend: (name: string, color: string) => void;
   onRemoveFriend: (id: string) => void;
+  myFriendId: string | null;
 }
 
 const PRESET_COLORS = [
@@ -26,7 +27,8 @@ export const FriendSettings: React.FC<FriendSettingsProps> = ({
   activeFriendId,
   setActiveFriendId,
   onAddFriend,
-  onRemoveFriend
+  onRemoveFriend,
+  myFriendId
 }) => {
   const [newFriendName, setNewFriendName] = useState('');
   const [selectedColor, setSelectedColor] = useState(PRESET_COLORS[4]); // default to orange or next available
@@ -80,7 +82,7 @@ export const FriendSettings: React.FC<FriendSettingsProps> = ({
                 </span>
               </div>
 
-              {friend.id !== 'me' && (
+              {friend.id !== 'me' && friend.id === myFriendId && (
                 <button
                   className="trash-btn"
                   onClick={(e) => {

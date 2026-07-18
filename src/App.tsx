@@ -37,7 +37,7 @@ const App: React.FC = () => {
     return localStorage.getItem('lollasync_my_friend_id') || 'me';
   });
   const [activeDay, setActiveDay] = useState<'Thursday' | 'Friday' | 'Saturday' | 'Sunday'>('Thursday');
-  const [viewMode, setViewMode] = useState<'lineup' | 'personal' | 'squad'>('lineup');
+  const [viewMode, setViewMode] = useState<'lineup' | 'personal' | 'squad'>('squad');
 
   // --- OVERRIDES FOR CONFLICTION RESOLUTIONS ---
   const [overrides, setOverrides] = useState<Record<string, string[]>>(() => {

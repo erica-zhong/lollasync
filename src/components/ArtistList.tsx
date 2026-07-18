@@ -37,14 +37,14 @@ export const ArtistList: React.FC<ArtistListProps> = ({
     return ['All', ...Array.from(genres).sort()];
   }, [artists]);
 
-  // Filter artists based on user input
+  // Filter artists based on user input, then sort by stage name then start time
   const filteredArtists = useMemo(() => {
-    return artists.filter(artist => {
+    const filtered = artists.filter(artist => {
       // 1. Text Search Match
-      const matchesSearch = 
+      const matchesSearch =
         artist.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         artist.genre.toLowerCase().includes(searchTerm.toLowerCase());
-      
+
       // 2. Stage Filter Match
       const matchesStage = selectedStage === 'All' || artist.stage === selectedStage;
 
@@ -57,6 +57,9 @@ export const ArtistList: React.FC<ArtistListProps> = ({
 
       return matchesSearch && matchesStage && matchesHype && matchesGenre;
     });
+    return [...filtered].sort((a, b) =>
+      (a.stage || '').localeCompare(b.stage || '') || a.startMinutes - b.startMinutes
+    );
   }, [artists, searchTerm, selectedStage, selectedGenre, hypeFilter, activeFriend.id, groupPreferences]);
 
   return (

@@ -360,9 +360,9 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({
                                 cursor: activeFriendId === myFriendId ? 'pointer' : 'default'
                               }}
                               onClick={() => activeFriendId === myFriendId && onToggleOverride && onToggleOverride(activeFriend.id, artist.id)}
-                              title={activeFriendId === myFriendId ? "Click to remove forced override" : "Forced schedule override"}
+                              title={activeFriendId === myFriendId ? "Click to remove swap override" : "Swapped schedule override"}
                             >
-                              ⚡ Forced {activeFriendId === myFriendId && '✕'}
+                              🔄 Swapped {activeFriendId === myFriendId && '✕'}
                             </span>
                           )}
 
@@ -524,13 +524,13 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({
                             padding: '3px 8px',
                             fontSize: '0.7rem',
                             borderRadius: '4px',
-                            borderColor: firstScheduled ? 'var(--neon-green)' : 'var(--border-light)',
-                            color: firstScheduled ? 'var(--neon-green)' : 'var(--text-muted)',
-                            background: firstScheduled ? 'rgba(57, 255, 20, 0.05)' : 'none',
+                            borderColor: firstScheduled ? 'var(--neon-green)' : 'rgba(255, 223, 0, 0.4)',
+                            color: firstScheduled ? 'var(--neon-green)' : 'var(--neon-yellow)',
+                            background: firstScheduled ? 'rgba(57, 255, 20, 0.05)' : 'rgba(255, 223, 0, 0.02)',
                             cursor: firstScheduled ? 'default' : 'pointer'
                           }}
                         >
-                          {firstScheduled ? '✓ Scheduled' : `⚡ Force ${first.name}`}
+                          {firstScheduled ? '✓ Scheduled' : `🔄 Swap to ${first.name}`}
                         </button>
 
                         {/* Toggle button for second artist */}
@@ -545,13 +545,13 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({
                             padding: '3px 8px',
                             fontSize: '0.7rem',
                             borderRadius: '4px',
-                            borderColor: secondScheduled ? 'var(--neon-green)' : 'var(--border-light)',
-                            color: secondScheduled ? 'var(--neon-green)' : 'var(--text-muted)',
-                            background: secondScheduled ? 'rgba(57, 255, 20, 0.05)' : 'none',
+                            borderColor: secondScheduled ? 'var(--neon-green)' : 'rgba(255, 223, 0, 0.4)',
+                            color: secondScheduled ? 'var(--neon-green)' : 'var(--neon-yellow)',
+                            background: secondScheduled ? 'rgba(57, 255, 20, 0.05)' : 'rgba(255, 223, 0, 0.02)',
                             cursor: secondScheduled ? 'default' : 'pointer'
                           }}
                         >
-                          {secondScheduled ? '✓ Scheduled' : `⚡ Force ${second.name}`}
+                          {secondScheduled ? '✓ Scheduled' : `🔄 Swap to ${second.name}`}
                         </button>
 
                         {/* Split Set Button */}

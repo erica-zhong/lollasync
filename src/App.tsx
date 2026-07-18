@@ -326,6 +326,42 @@ const App: React.FC = () => {
     });
   };
 
+  const handleResetAllData = async () => {
+    const confirmWipe = window.confirm(
+      "WARNING: This will completely WIPE the Google Sheet database and reset your local schedule. This action cannot be undone. Are you sure?"
+    );
+    if (!confirmWipe) return;
+
+    if (sheetsUrl && syncEnabled) {
+      setLastSyncStatus('Wiping...');
+      try {
+        await fetch(sheetsUrl, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            friends: [],
+            groupPreferences: {},
+            overrides: {},
+            splits: {}
+          })
+        });
+      } catch (err) {
+        console.error('Failed to wipe Google Sheet database:', err);
+      }
+    }
+
+    localStorage.removeItem(LOCAL_STORAGE_KEY_FRIENDS);
+    localStorage.removeItem(LOCAL_STORAGE_KEY_PREFS);
+    localStorage.removeItem('lollasync_overrides_v2');
+    localStorage.removeItem('lollasync_splits_v2');
+    localStorage.removeItem('lollasync_my_friend_id');
+
+    window.location.reload();
+  };
+
   // Filter artists by the selected day
   const filteredArtists = React.useMemo(() => {
     return MOCK_ARTISTS.filter(a => a.day === activeDay);
@@ -445,7 +481,7 @@ const App: React.FC = () => {
                     </button>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderTop: '1px solid var(--border-light)', paddingTop: '12px', marginTop: '4px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid var(--border-light)', paddingTop: '12px', marginTop: '4px' }}>
                     <button
                       onClick={() => fetchFromSheets(sheetsUrl)}
                       disabled={!sheetsUrl || lastSyncStatus === 'Syncing...'}
@@ -453,6 +489,22 @@ const App: React.FC = () => {
                       style={{ flex: 1, padding: '8px', fontSize: '0.75rem', justifyContent: 'center' }}
                     >
                       Sync Now 🔄
+                    </button>
+                    <button
+                      onClick={handleResetAllData}
+                      className="btn"
+                      style={{ 
+                        flex: 1, 
+                        padding: '8px', 
+                        fontSize: '0.75rem', 
+                        justifyContent: 'center',
+                        borderColor: 'var(--neon-pink)',
+                        color: 'var(--neon-pink)',
+                        background: 'rgba(255, 0, 127, 0.05)',
+                        marginTop: '4px'
+                      }}
+                    >
+                      Wipe Database & Reset App 🚨
                     </button>
                   </div>
                 </>

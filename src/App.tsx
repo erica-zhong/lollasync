@@ -308,23 +308,18 @@ const App: React.FC = () => {
   };
 
   const handleToggleOverride = (friendId: string, artistId: string) => {
-    setOverrides(prev => {
-      const friendOverrides = prev[friendId] ? [...prev[friendId]] : [];
-      const index = friendOverrides.indexOf(artistId);
-      if (index > -1) {
-        friendOverrides.splice(index, 1);
-      } else {
-        friendOverrides.push(artistId);
-      }
-      const updated = {
-        ...prev,
-        [friendId]: friendOverrides
-      };
-      if (sheetsUrl && syncEnabled) {
-        saveStateToSheets(sheetsUrl, friends, groupPreferences, updated, splits);
-      }
-      return updated;
-    });
+    const friendOverrides = overrides[friendId] ? [...overrides[friendId]] : [];
+    const index = friendOverrides.indexOf(artistId);
+    if (index > -1) {
+      friendOverrides.splice(index, 1);
+    } else {
+      friendOverrides.push(artistId);
+    }
+    const updated = { ...overrides, [friendId]: friendOverrides };
+    setOverrides(updated);
+    if (sheetsUrl && syncEnabled) {
+      saveStateToSheets(sheetsUrl, friends, groupPreferences, updated, splits);
+    }
   };
 
   const handleToggleSplit = (friendId: string, artist1Id: string, artist2Id?: string) => {

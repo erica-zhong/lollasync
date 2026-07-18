@@ -9,6 +9,9 @@ interface ScheduleTimelineProps {
   activeFriendId: string;
   groupPreferences: GroupPreferences;
   viewMode: 'personal' | 'squad';
+  overrides?: Record<string, string[]>;
+  onToggleOverride?: (friendId: string, artistId: string) => void;
+  myFriendId?: string | null;
 }
 
 export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({
@@ -16,46 +19,46 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({
   friends,
   activeFriendId,
   groupPreferences,
-  viewMode
+  viewMode,
+  overrides = {},
+  onToggleOverride,
+  myFriendId = null
 }) => {
   const activeFriend = friends.find(f => f.id === activeFriendId) || friends[0];
 
   // ==========================================
-  // PERSONAL ITINERARY OPTIMIZER ALGORITHM
+  // HELPER ALGORITHM FOR CONFLICT RESOLUTION
   // ==========================================
-  const personalSchedule = useMemo(() => {
-    // 1. Get active friend's preferences
-    const prefs = groupPreferences[activeFriend.id] || {};
-    
-    // 2. Filter for selected artists (must, want, maybe)
+  const getFriendSchedule = (friendId: string) => {
+    const prefs = groupPreferences[friendId] || {};
+    const friendOverrides = overrides[friendId] || [];
+    const priorityVal = { must: 3, want: 2, maybe: 1, none: 0 };
+
+    // Get active friend's selected artists
     const selected = artists
       .filter(a => prefs[a.id] && prefs[a.id] !== 'none')
-      .map(a => ({
-        ...a,
-        priority: prefs[a.id] as HypeLevel
-      }))
-      // Sort by start time, then priority (must > want > maybe)
+      .map(a => {
+        const isOverridden = friendOverrides.includes(a.id);
+        return {
+          ...a,
+          priorityWeight: isOverridden ? 10 : priorityVal[prefs[a.id] as HypeLevel] || 0
+        };
+      })
+      // Sort by start time, then priority weight
       .sort((a, b) => {
         if (a.startMinutes !== b.startMinutes) {
           return a.startMinutes - b.startMinutes;
         }
-        const priorityVal = { must: 3, want: 2, maybe: 1, none: 0 };
-        return priorityVal[b.priority] - priorityVal[a.priority];
+        return b.priorityWeight - a.priorityWeight;
       });
 
     const accepted: Artist[] = [];
     const clashed: { artist: Artist; conflictingWith: Artist }[] = [];
 
-    // Priority hierarchy weights
-    const priorityVal = { must: 3, want: 2, maybe: 1, none: 0 };
-
     selected.forEach(candidate => {
-      // Check for overlap with already accepted artists
       let conflictWith: Artist | null = null;
       
       for (const acceptedAct of accepted) {
-        // Two artists overlap if:
-        // Start of B is before end of A, AND end of B is after start of A
         const overlap = candidate.startMinutes < acceptedAct.endMinutes && candidate.endMinutes > acceptedAct.startMinutes;
         if (overlap) {
           conflictWith = acceptedAct;
@@ -66,27 +69,32 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({
       if (!conflictWith) {
         accepted.push(candidate);
       } else {
-        // Resolve conflict: check if candidate has strictly HIGHER priority
-        const candidatePriority = prefs[candidate.id] || 'none';
-        const acceptedPriority = prefs[conflictWith.id] || 'none';
+        const candidateWeight = candidate.priorityWeight;
+        const acceptedWeight = (conflictWith as any).priorityWeight || 0;
 
-        if (priorityVal[candidatePriority] > priorityVal[acceptedPriority]) {
+        if (candidateWeight > acceptedWeight) {
           // Replace accepted act with candidate
           const index = accepted.indexOf(conflictWith);
           accepted.splice(index, 1);
           accepted.push(candidate);
-          // Old one becomes clashed
           clashed.push({ artist: conflictWith, conflictingWith: candidate });
-          // Sort accepted again since we replaced an element
           accepted.sort((a, b) => a.startMinutes - b.startMinutes);
         } else {
-          // Reject candidate as clashed
           clashed.push({ artist: candidate, conflictingWith: conflictWith });
         }
       }
     });
 
-    // 3. Compute travel warnings between consecutive sets
+    return { accepted, clashed };
+  };
+
+  // ==========================================
+  // PERSONAL ITINERARY OPTIMIZER ALGORITHM
+  // ==========================================
+  const personalSchedule = useMemo(() => {
+    const { accepted, clashed } = getFriendSchedule(activeFriend.id);
+    
+    // Compute travel warnings between consecutive sets
     const warnings: WalkWarning[] = [];
     for (let i = 0; i < accepted.length - 1; i++) {
       const current = accepted[i];
@@ -96,7 +104,6 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({
       const walkTime = getWalkingTime(current.stage, next.stage);
 
       if (walkTime > 0) {
-        // Alert if the gap is tight (less than walking time + 5 mins buffer)
         if (gap < walkTime + 5) {
           warnings.push({
             fromArtist: current,
@@ -110,16 +117,12 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({
     }
 
     return { accepted, clashed, warnings };
-  }, [artists, activeFriend.id, groupPreferences]);
+  }, [artists, activeFriend.id, groupPreferences, overrides]);
 
   // ==========================================
   // SQUAD SYNC / OVERLAP CALCULATIONS
   // ==========================================
   const squadTimeline = useMemo(() => {
-    // Group all active artist selections across ALL friends
-    // We want to list timeslots chronologically and see who is where.
-    
-    // First, find all artists selected by at least one person
     const selectedArtists = artists.filter(artist => {
       return friends.some(f => {
         const pref = groupPreferences[f.id]?.[artist.id];
@@ -127,41 +130,9 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({
       });
     });
 
-    // We need to resolve each friend's personal optimized schedule first
-    // so we only display where they actually end up (conflict-free) in the squad view!
-    // This is much cleaner than showing them at 3 stages at once.
     const friendSchedules: Record<string, Artist[]> = {};
     friends.forEach(f => {
-      const prefs = groupPreferences[f.id] || {};
-      const fSelected = artists
-        .filter(a => prefs[a.id] && prefs[a.id] !== 'none')
-        .sort((a, b) => a.startMinutes - b.startMinutes);
-
-      const fAccepted: Artist[] = [];
-      const priorityVal = { must: 3, want: 2, maybe: 1, none: 0 };
-
-      fSelected.forEach(candidate => {
-        let conflictWith: Artist | null = null;
-        for (const act of fAccepted) {
-          if (candidate.startMinutes < act.endMinutes && candidate.endMinutes > act.startMinutes) {
-            conflictWith = act;
-            break;
-          }
-        }
-        if (!conflictWith) {
-          fAccepted.push(candidate);
-        } else {
-          const candidatePriority = prefs[candidate.id] as HypeLevel;
-          const acceptedPriority = prefs[conflictWith.id] as HypeLevel;
-          if (priorityVal[candidatePriority] > priorityVal[acceptedPriority]) {
-            const idx = fAccepted.indexOf(conflictWith);
-            fAccepted.splice(idx, 1);
-            fAccepted.push(candidate);
-            fAccepted.sort((a, b) => a.startMinutes - b.startMinutes);
-          }
-        }
-      });
-      friendSchedules[f.id] = fAccepted;
+      friendSchedules[f.id] = getFriendSchedule(f.id).accepted;
     });
 
     // Find all unique set time intervals for the day
@@ -287,6 +258,29 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({
                           >
                             {currentHype === 'must' ? '🔥 MUST SEE' : currentHype === 'want' ? '⭐ WANT TO SEE' : '💤 MAYBE'}
                           </span>
+                          
+                          {overrides[activeFriend.id]?.includes(artist.id) && (
+                            <span 
+                              style={{ 
+                                fontSize: '0.7rem', 
+                                fontWeight: 700, 
+                                background: 'rgba(255, 223, 0, 0.15)',
+                                color: 'var(--neon-yellow)',
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                border: '1px solid rgba(255, 223, 0, 0.3)',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                cursor: activeFriendId === myFriendId ? 'pointer' : 'default'
+                              }}
+                              onClick={() => activeFriendId === myFriendId && onToggleOverride && onToggleOverride(activeFriend.id, artist.id)}
+                              title={activeFriendId === myFriendId ? "Click to remove forced override" : "Forced schedule override"}
+                            >
+                              ⚡ Forced {activeFriendId === myFriendId && '✕'}
+                            </span>
+                          )}
+
                           <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                             <Clock size={12} />
                             {formatTimeStr(artist.startTime)} - {formatTimeStr(artist.endTime)}
@@ -359,15 +353,36 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({
                     padding: '8px 12px', 
                     borderRadius: '6px',
                     fontSize: '0.8rem',
-                    border: '1px solid var(--border-light)'
+                    border: '1px solid var(--border-light)',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: '8px'
                   }}
                 >
                   <div>
                     <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{artist.name}</span>
                     <span style={{ color: 'var(--text-muted)' }}> ({artist.startTime} @ {artist.stage})</span>
                   </div>
-                  <div style={{ color: 'var(--text-muted)' }}>
-                    Clashes with <strong style={{ color: 'var(--neon-pink)' }}>{conflictingWith.name}</strong>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                    <div style={{ color: 'var(--text-muted)' }}>
+                      Clashes with <strong style={{ color: 'var(--neon-pink)' }}>{conflictingWith.name}</strong>
+                    </div>
+                    {activeFriend.id === myFriendId && onToggleOverride && (
+                      <button
+                        onClick={() => onToggleOverride(activeFriend.id, artist.id)}
+                        className="btn"
+                        style={{
+                          padding: '3px 8px',
+                          fontSize: '0.7rem',
+                          borderRadius: '4px',
+                          borderColor: 'var(--neon-yellow)',
+                          color: 'var(--neon-yellow)',
+                          background: 'rgba(255, 223, 0, 0.05)',
+                        }}
+                      >
+                        ⚡ Force Schedule
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}

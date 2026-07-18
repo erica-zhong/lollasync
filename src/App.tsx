@@ -62,6 +62,7 @@ const App: React.FC = () => {
   });
   const [lastSyncStatus, setLastSyncStatus] = useState<string>('Disconnected');
   const [lastSyncTime, setLastSyncTime] = useState<string>('');
+  const [isSaving, setIsSaving] = useState<boolean>(false);
 
 
 
@@ -210,6 +211,7 @@ const App: React.FC = () => {
   ) => {
     if (!url) return;
     lastSaveTimeRef.current = Date.now();
+    setIsSaving(true);
     setLastSyncStatus('Saving...');
     fetch(url, {
       method: 'POST',
@@ -225,11 +227,13 @@ const App: React.FC = () => {
       })
     })
     .then(() => {
+      setIsSaving(false);
       setLastSyncStatus('Success');
       const now = new Date();
       setLastSyncTime(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
     })
     .catch((err) => {
+      setIsSaving(false);
       console.error('Error saving to Google Sheets:', err);
       setLastSyncStatus('Error');
     });
@@ -610,7 +614,7 @@ const App: React.FC = () => {
           )}
 
           {viewMode === 'personal' && (
-            <ScheduleTimeline
+                      <ScheduleTimeline
               artists={filteredArtists}
               friends={friends}
               activeFriendId={activeFriendId}
@@ -621,11 +625,12 @@ const App: React.FC = () => {
               splits={splits}
               onToggleSplit={handleToggleSplit}
               myFriendId={myFriendId}
+              isSaving={isSaving}
             />
           )}
 
           {viewMode === 'squad' && (
-            <ScheduleTimeline
+                      <ScheduleTimeline
               artists={filteredArtists}
               friends={friends}
               activeFriendId={activeFriendId}
@@ -636,6 +641,7 @@ const App: React.FC = () => {
               splits={splits}
               onToggleSplit={handleToggleSplit}
               myFriendId={myFriendId}
+              isSaving={isSaving}
             />
           )}
         </section>

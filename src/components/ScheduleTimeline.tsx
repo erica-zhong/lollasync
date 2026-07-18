@@ -14,6 +14,7 @@ interface ScheduleTimelineProps {
   splits?: Record<string, string[]>;
   onToggleSplit?: (friendId: string, artist1Id: string, artist2Id: string) => void;
   myFriendId?: string | null;
+  isSaving?: boolean;
 }
 
 export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({
@@ -26,7 +27,8 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({
   onToggleOverride,
   splits = {},
   onToggleSplit,
-  myFriendId = null
+  myFriendId = null,
+  isSaving = false
 }) => {
   const activeFriend = friends.find(f => f.id === activeFriendId) || friends[0] || { id: 'me', name: 'Me (You)', color: '#FF007F', avatar: 'MY' };
 
@@ -36,6 +38,13 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({
   const prevClashKeysRef = useRef<Record<string, ClashPairEntry>>({});
   // Track which artist ID is currently being swapped (for loading state)
   const [swappingId, setSwappingId] = useState<string | null>(null);
+
+  // Clear loading state when the save finishes
+  useEffect(() => {
+    if (!isSaving && swappingId !== null) {
+      setSwappingId(null);
+    }
+  }, [isSaving]);
 
   // ==========================================
   // HELPER ALGORITHM FOR CONFLICT RESOLUTION
@@ -590,7 +599,6 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({
                               onClick={() => {
                                 if (!isSwapping) {
                                   setSwappingId(first.id);
-                                  setTimeout(() => setSwappingId(null), 700);
                                   onToggleOverride && onToggleOverride(activeFriend.id, first.id);
                                 }
                               }}
@@ -621,7 +629,6 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({
                               onClick={() => {
                                 if (!isSwapping) {
                                   setSwappingId(second.id);
-                                  setTimeout(() => setSwappingId(null), 700);
                                   onToggleOverride && onToggleOverride(activeFriend.id, second.id);
                                 }
                               }}

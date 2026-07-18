@@ -105,7 +105,21 @@ const App: React.FC = () => {
     localStorage.setItem('lollasync_sheets_enabled', JSON.stringify(syncEnabled));
   }, [syncEnabled]);
 
-  // --- GOOGLE SHEETS SYNC IMPLEMENTATION ---
+  // --- SELF-HEALING RECOVERY EFFECT ---
+  useEffect(() => {
+    if (myFriendId && friends.length > 0) {
+      const hasSelf = friends.some(f => f.id === myFriendId);
+      if (!hasSelf) {
+        setMyFriendId(null);
+        localStorage.removeItem('lollasync_my_friend_id');
+        setShowWelcomeModal(true);
+      }
+    } else if (friends.length === 0 && !showWelcomeModal) {
+      setMyFriendId(null);
+      localStorage.removeItem('lollasync_my_friend_id');
+      setShowWelcomeModal(true);
+    }
+  }, [friends, myFriendId, showWelcomeModal]);
   const fetchFromSheets = async (url: string) => {
     if (!url) return;
     setLastSyncStatus('Syncing...');

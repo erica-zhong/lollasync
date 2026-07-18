@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Artist, Friend, GroupPreferences, HypeLevel } from '../types';
 import { formatTimeStr } from '../mockData';
 import { Search, Flame, Star, Coffee, EyeOff, SlidersHorizontal } from 'lucide-react';
@@ -12,6 +12,17 @@ interface ArtistListProps {
   myFriendId: string | null;
 }
 
+const STAGE_EMOJI: Record<string, string> = {
+  'Airbnb':                  '🏠',
+  'Allianz':                 '🛡️',
+  'BMI':                     '🎼',
+  'Bud Light':               '🍺',
+  'Kidzapalooza':            '🧸',
+  "Perry's":                 '🎧',
+  "Tito's Handmade Vodka":   '🍸',
+  'T-Mobile':                '📱',
+};
+
 export const ArtistList: React.FC<ArtistListProps> = ({
   artists,
   activeFriend,
@@ -24,6 +35,8 @@ export const ArtistList: React.FC<ArtistListProps> = ({
   const [selectedStage, setSelectedStage] = useState('All');
   const [selectedGenre, setSelectedGenre] = useState('All');
   const [hypeFilter, setHypeFilter] = useState<HypeLevel | 'all'>('all');
+  const [activeStage, setActiveStage] = useState<string>('');
+  const stageRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   // Extract all unique stages in this active list
   const uniqueStages = useMemo(() => {
@@ -61,6 +74,34 @@ export const ArtistList: React.FC<ArtistListProps> = ({
       (a.stage || '').localeCompare(b.stage || '') || a.startMinutes - b.startMinutes
     );
   }, [artists, searchTerm, selectedStage, selectedGenre, hypeFilter, activeFriend.id, groupPreferences]);
+
+  const uniqueFilteredStages = useMemo(
+    () => [...new Set(filteredArtists.map(a => a.stage))],
+    [filteredArtists]
+  );
+
+  // Seed active stage whenever the filtered list changes
+  useEffect(() => {
+    setActiveStage(uniqueFilteredStages[0] ?? '');
+  }, [uniqueFilteredStages]);
+
+  // IntersectionObserver: highlight whichever stage header is nearest the top
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            setActiveStage(entry.target.getAttribute('data-stage') ?? '');
+            break;
+          }
+        }
+      },
+      { rootMargin: '-10px 0px -80% 0px', threshold: 0 }
+    );
+    const refs = stageRefs.current;
+    Object.values(refs).forEach(el => el && observer.observe(el));
+    return () => observer.disconnect();
+  }, [filteredArtists]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -166,6 +207,51 @@ export const ArtistList: React.FC<ArtistListProps> = ({
         </div>
       </div>
 
+      {/* Stage Jump Nav */}
+      {uniqueFilteredStages.length > 1 && (
+        <div style={{
+          display: 'flex',
+          gap: '8px',
+          overflowX: 'auto',
+          scrollbarWidth: 'none',
+          position: 'sticky',
+          top: '88px',
+          zIndex: 12,
+          background: 'var(--bg-base)',
+          borderTop: '1px solid var(--border-light)',
+          paddingTop: '12px',
+          paddingBottom: '8px',
+          marginTop: '-8px',
+        }}>
+          {uniqueFilteredStages.map(stage => (
+            <button
+              key={stage}
+              onClick={() => {
+                const el = stageRefs.current[stage];
+                if (el) {
+                  const top = el.getBoundingClientRect().top + window.scrollY - 140;
+                  window.scrollTo({ top, behavior: 'smooth' });
+                }
+              }}
+              className="btn"
+              style={{
+                padding: '6px 14px',
+                fontSize: '0.78rem',
+                borderRadius: '20px',
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
+                transition: 'all 0.2s ease',
+                borderColor: activeStage === stage ? 'var(--neon-cyan)' : 'var(--border-light)',
+                color: activeStage === stage ? 'var(--neon-cyan)' : 'var(--text-muted)',
+                background: activeStage === stage ? 'rgba(0, 240, 255, 0.08)' : 'transparent',
+              }}
+            >
+              {STAGE_EMOJI[stage] ?? '🎵'} {stage}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Selected Friend Status Tag */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', background: 'rgba(255, 255, 255, 0.02)', padding: '10px 16px', borderRadius: '8px', border: '1px dashed var(--border-light)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -217,7 +303,8 @@ export const ArtistList: React.FC<ArtistListProps> = ({
       {/* Artist Cards Container */}
       <div className="artist-list">
         {filteredArtists.length > 0 ? (
-          filteredArtists.map((artist) => {
+          filteredArtists.map((artist, index) => {
+            const isNewStage = index === 0 || artist.stage !== filteredArtists[index - 1].stage;
             const activePref = groupPreferences[activeFriend.id]?.[artist.id] || 'none';
 
             // Find other friends who have preference for this artist
@@ -230,7 +317,43 @@ export const ArtistList: React.FC<ArtistListProps> = ({
               .filter(item => item.pref !== 'none');
 
             return (
-              <div key={artist.id} className="artist-card">
+              <React.Fragment key={artist.id}>
+                {isNewStage && (
+                  <div
+                    ref={el => { stageRefs.current[artist.stage] = el; }}
+                    data-stage={artist.stage}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '14px',
+                      marginTop: index === 0 ? '0' : '32px',
+                      marginBottom: '10px',
+                      padding: '10px 16px',
+                      background: 'rgba(6, 8, 20, 0.85)',
+                      backdropFilter: 'blur(12px)',
+                      border: '1px solid rgba(0, 240, 255, 0.12)',
+                      borderRadius: '10px',
+                      position: 'sticky',
+                      top: '132px',
+                      zIndex: 10,
+                    }}>
+                    <span style={{ fontSize: '1.4rem', lineHeight: 1 }}>
+                      {STAGE_EMOJI[artist.stage] ?? '🎵'}
+                    </span>
+                    <span style={{
+                      fontSize: '0.95rem',
+                      fontWeight: 700,
+                      letterSpacing: '0.08em',
+                      textTransform: 'uppercase',
+                      color: 'var(--neon-cyan)',
+                      fontFamily: 'var(--font-display)',
+                    }}>
+                      {artist.stage}
+                    </span>
+                    <div style={{ flex: 1, height: '1px', background: 'rgba(0, 240, 255, 0.15)' }} />
+                  </div>
+                )}
+              <div className="artist-card">
                 
                 {/* Time & Stage Info */}
                 <div className="artist-time-stage">
@@ -238,7 +361,7 @@ export const ArtistList: React.FC<ArtistListProps> = ({
                     {formatTimeStr(artist.startTime)} - {formatTimeStr(artist.endTime)}
                   </span>
                   <span className="artist-stage">
-                    📍 {artist.stage}
+                    {STAGE_EMOJI[artist.stage] ?? '📍'} {artist.stage}
                   </span>
                 </div>
 
@@ -336,6 +459,7 @@ export const ArtistList: React.FC<ArtistListProps> = ({
                 )}
 
               </div>
+              </React.Fragment>
             );
           })
         ) : (

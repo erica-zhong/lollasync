@@ -243,7 +243,7 @@ const App: React.FC = () => {
 
     const interval = setInterval(() => {
       fetchFromSheets(sheetsUrl);
-    }, 10000); // Poll every 10 seconds
+    }, 30000); // Poll every 30 seconds
 
     return () => clearInterval(interval);
   }, [sheetsUrl, syncEnabled]);

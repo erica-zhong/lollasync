@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { Artist, Friend, GroupPreferences, HypeLevel, WalkWarning } from '../types';
 import { formatTimeStr, getWalkingTime } from '../mockData';
 import { Clock, MapPin, Footprints, AlertTriangle, Users, Compass, CheckCircle } from 'lucide-react';
@@ -29,6 +29,11 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({
   myFriendId = null
 }) => {
   const activeFriend = friends.find(f => f.id === activeFriendId) || friends[0] || { id: 'me', name: 'Me (You)', color: '#FF007F', avatar: 'MY' };
+
+  // Track exiting clash pairs for exit animation
+  type ClashPairEntry = { first: Artist; second: Artist; firstScheduled: boolean; secondScheduled: boolean };
+  const [exitingPairs, setExitingPairs] = useState<Record<string, ClashPairEntry>>({});
+  const prevClashKeysRef = useRef<Record<string, ClashPairEntry>>({});
 
   // ==========================================
   // HELPER ALGORITHM FOR CONFLICT RESOLUTION
@@ -203,6 +208,35 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({
 
     return pairs;
   }, [personalSchedule]);
+
+  // Detect removed clash pairs and play exit animation
+  useEffect(() => {
+    const currentKeys = new Set(clashPairs.map(({ first, second }) => [first.id, second.id].sort().join('_')));
+    const removedEntries: Record<string, ClashPairEntry> = {};
+
+    Object.entries(prevClashKeysRef.current).forEach(([key, entry]) => {
+      if (!currentKeys.has(key)) {
+        removedEntries[key] = entry;
+      }
+    });
+
+    // Prune prev ref to only current keys
+    prevClashKeysRef.current = Object.fromEntries(
+      Object.entries(prevClashKeysRef.current).filter(([k]) => currentKeys.has(k))
+    );
+
+    if (Object.keys(removedEntries).length === 0) return;
+
+    setExitingPairs(prev => ({ ...prev, ...removedEntries }));
+    const timer = setTimeout(() => {
+      setExitingPairs(prev => {
+        const next = { ...prev };
+        Object.keys(removedEntries).forEach(k => delete next[k]);
+        return next;
+      });
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [clashPairs]);
 
   // ==========================================
   // SQUAD SYNC / OVERLAP CALCULATIONS
@@ -462,7 +496,7 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({
         )}
 
         {/* Display Clash/Skipped Artists */}
-        {clashPairs.length > 0 && (
+        {(clashPairs.length > 0 || Object.keys(exitingPairs).length > 0) && (
           <div className="glass-panel" style={{ padding: '20px', marginTop: '20px', borderStyle: 'dashed' }}>
             <h4 style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', fontSize: '0.95rem' }}>
               <AlertTriangle size={16} />
@@ -472,11 +506,45 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({
               These sets have overlapping schedules. Choose which one to force-schedule or split the time between them.
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {/* Exiting pairs (fade-out animation) */}
+              {Object.entries(exitingPairs).map(([pairKey, { first, second }]) => (
+                <div
+                  key={`exit_${pairKey}`}
+                  className="clash-card-exit"
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    background: 'rgba(255,255,255,0.01)',
+                    padding: '10px 14px',
+                    borderRadius: '8px',
+                    fontSize: '0.8rem',
+                    border: '1px solid var(--border-light)',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: '12px'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>{first.name}</span>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>({first.startTime} @ {first.stage})</span>
+                    <span style={{ color: 'var(--text-muted)', margin: '0 4px', fontSize: '0.75rem' }}>vs</span>
+                    <span style={{ color: 'var(--text-secondary)' }}>{second.name}</span>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>({second.startTime} @ {second.stage})</span>
+                  </div>
+                </div>
+              ))}
+
               {clashPairs.map(({ first, second, firstScheduled, secondScheduled }) => {
+                const pairKey = [first.id, second.id].sort().join('_');
                 const isSplit = splits[activeFriend.id]?.includes(first.id) && splits[activeFriend.id]?.includes(second.id);
+
+                // Sync ref on each render
+                prevClashKeysRef.current[pairKey] = { first, second, firstScheduled, secondScheduled };
+
                 return (
                   <div 
-                    key={`${first.id}_${second.id}`} 
+                    key={`${first.id}_${second.id}`}
+                    className="clash-card-enter"
                     style={{ 
                       display: 'flex', 
                       justifyContent: 'space-between', 

@@ -40,6 +40,28 @@
   --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* Clash card animations */
+@keyframes clashCardIn {
+  from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes clashCardOut {
+  0%   { opacity: 1; transform: scale(1);    max-height: 120px; margin-bottom: 0; }
+  60%  { opacity: 0; transform: scale(0.95); max-height: 120px; }
+  100% { opacity: 0; transform: scale(0.95); max-height: 0;     margin-bottom: -10px; padding-top: 0; padding-bottom: 0; }
+}
+
+.clash-card-enter {
+  animation: clashCardIn 0.25s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+.clash-card-exit {
+  animation: clashCardOut 0.35s cubic-bezier(0.4, 0, 0.2, 1) both;
+  overflow: hidden;
+  pointer-events: none;
+}
+
 /* Reset and Base Styles */
 * {
   box-sizing: border-box;

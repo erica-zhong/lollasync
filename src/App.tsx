@@ -71,6 +71,7 @@ const App: React.FC = () => {
   const groupPreferencesRef = useRef(groupPreferences);
   const overridesRef = useRef(overrides);
   const splitsRef = useRef(splits);
+  const lastSaveTimeRef = useRef<number>(0);
 
   useEffect(() => {
     friendsRef.current = friends;
@@ -122,6 +123,10 @@ const App: React.FC = () => {
   }, [friends, myFriendId, showWelcomeModal]);
   const fetchFromSheets = async (url: string) => {
     if (!url) return;
+    if (Date.now() - lastSaveTimeRef.current < 8000) {
+      setLastSyncStatus('Success (Sync Protected)');
+      return;
+    }
     setLastSyncStatus('Syncing...');
     try {
       const response = await fetch(url);
@@ -196,6 +201,7 @@ const App: React.FC = () => {
     updatedSplits: Record<string, string[]>
   ) => {
     if (!url) return;
+    lastSaveTimeRef.current = Date.now();
     setLastSyncStatus('Saving...');
     fetch(url, {
       method: 'POST',

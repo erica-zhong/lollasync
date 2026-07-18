@@ -11,6 +11,8 @@ interface ScheduleTimelineProps {
   viewMode: 'personal' | 'squad';
   overrides?: Record<string, string[]>;
   onToggleOverride?: (friendId: string, artistId: string) => void;
+  splits?: Record<string, string[]>;
+  onToggleSplit?: (friendId: string, artist1Id: string, artist2Id: string) => void;
   myFriendId?: string | null;
 }
 
@@ -22,6 +24,8 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({
   viewMode,
   overrides = {},
   onToggleOverride,
+  splits = {},
+  onToggleSplit,
   myFriendId = null
 }) => {
   const activeFriend = friends.find(f => f.id === activeFriendId) || friends[0];
@@ -32,6 +36,7 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({
   const getFriendSchedule = (friendId: string) => {
     const prefs = groupPreferences[friendId] || {};
     const friendOverrides = overrides[friendId] || [];
+    const friendSplits = splits[friendId] || [];
     const priorityVal = { must: 3, want: 2, maybe: 1, none: 0 };
 
     // Get active friend's selected artists
@@ -39,9 +44,17 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({
       .filter(a => prefs[a.id] && prefs[a.id] !== 'none')
       .map(a => {
         const isOverridden = friendOverrides.includes(a.id);
+        const isSplitRequested = friendSplits.includes(a.id);
         return {
           ...a,
-          priorityWeight: isOverridden ? 10 : priorityVal[prefs[a.id] as HypeLevel] || 0
+          priorityWeight: isOverridden ? 10 : priorityVal[prefs[a.id] as HypeLevel] || 0,
+          isSplitRequested,
+          originalStartTime: a.startTime,
+          originalEndTime: a.endTime,
+          originalStartMinutes: a.startMinutes,
+          originalEndMinutes: a.endMinutes,
+          isSplitActive: false,
+          splitType: 'none' as 'none' | 'first' | 'second'
         };
       })
       // Sort by start time, then priority weight
@@ -52,11 +65,11 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({
         return b.priorityWeight - a.priorityWeight;
       });
 
-    const accepted: Artist[] = [];
+    const accepted: any[] = [];
     const clashed: { artist: Artist; conflictingWith: Artist }[] = [];
 
     selected.forEach(candidate => {
-      let conflictWith: Artist | null = null;
+      let conflictWith: any = null;
       
       for (const acceptedAct of accepted) {
         const overlap = candidate.startMinutes < acceptedAct.endMinutes && candidate.endMinutes > acceptedAct.startMinutes;
@@ -69,13 +82,56 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({
       if (!conflictWith) {
         accepted.push(candidate);
       } else {
+        // Resolve with Split if requested for both
+        if (candidate.isSplitRequested && conflictWith.isSplitRequested) {
+          const walkTime = getWalkingTime(conflictWith.stage, candidate.stage);
+          const os = Math.max(conflictWith.startMinutes, candidate.startMinutes);
+          const oe = Math.min(conflictWith.endMinutes, candidate.endMinutes);
+          const midpoint = Math.floor((os + oe) / 2);
+
+          const firstEnd = midpoint - Math.ceil(walkTime / 2);
+          const secondStart = midpoint + Math.floor(walkTime / 2);
+
+          const isFirstViable = firstEnd - conflictWith.startMinutes >= 10;
+          const isSecondViable = candidate.endMinutes - secondStart >= 10;
+
+          if (isFirstViable && isSecondViable) {
+            conflictWith.endMinutes = firstEnd;
+            const fh = Math.floor((firstEnd + 720) / 60);
+            const fm = (firstEnd + 720) % 60;
+            conflictWith.endTime = `${String(fh).padStart(2, '0')}:${String(fm).padStart(2, '0')}`;
+            conflictWith.isSplitActive = true;
+            conflictWith.splitType = 'first';
+
+            candidate.startMinutes = secondStart;
+            const sh = Math.floor((secondStart + 720) / 60);
+            const sm = (secondStart + 720) % 60;
+            candidate.startTime = `${String(sh).padStart(2, '0')}:${String(sm).padStart(2, '0')}`;
+            candidate.isSplitActive = true;
+            candidate.splitType = 'second';
+
+            accepted.push(candidate);
+            accepted.sort((a, b) => a.startMinutes - b.startMinutes);
+            return;
+          }
+        }
+
         const candidateWeight = candidate.priorityWeight;
-        const acceptedWeight = (conflictWith as any).priorityWeight || 0;
+        const acceptedWeight = conflictWith.priorityWeight || 0;
 
         if (candidateWeight > acceptedWeight) {
-          // Replace accepted act with candidate
           const index = accepted.indexOf(conflictWith);
           accepted.splice(index, 1);
+          
+          if (conflictWith.isSplitActive) {
+            conflictWith.startTime = conflictWith.originalStartTime;
+            conflictWith.endTime = conflictWith.originalEndTime;
+            conflictWith.startMinutes = conflictWith.originalStartMinutes;
+            conflictWith.endMinutes = conflictWith.originalEndMinutes;
+            conflictWith.isSplitActive = false;
+            conflictWith.splitType = 'none';
+          }
+
           accepted.push(candidate);
           clashed.push({ artist: conflictWith, conflictingWith: candidate });
           accepted.sort((a, b) => a.startMinutes - b.startMinutes);
@@ -117,7 +173,7 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({
     }
 
     return { accepted, clashed, warnings };
-  }, [artists, activeFriend.id, groupPreferences, overrides]);
+  }, [artists, activeFriend.id, groupPreferences, overrides, splits]);
 
   // ==========================================
   // SQUAD SYNC / OVERLAP CALCULATIONS
@@ -281,6 +337,50 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({
                             </span>
                           )}
 
+                          {artist.isSplitActive && artist.splitType === 'first' && (
+                            <span 
+                              style={{ 
+                                fontSize: '0.7rem', 
+                                fontWeight: 700, 
+                                background: 'rgba(255, 0, 127, 0.1)',
+                                color: 'var(--neon-pink)',
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                border: '1px solid rgba(255, 0, 127, 0.3)',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                cursor: activeFriendId === myFriendId ? 'pointer' : 'default'
+                              }}
+                              onClick={() => activeFriendId === myFriendId && onToggleSplit && onToggleSplit(activeFriend.id, artist.id, '')}
+                              title={activeFriendId === myFriendId ? "Click to remove split time" : "Split Set"}
+                            >
+                              ✂️ Split (Leaves Early) {activeFriendId === myFriendId && '✕'}
+                            </span>
+                          )}
+
+                          {artist.isSplitActive && artist.splitType === 'second' && (
+                            <span 
+                              style={{ 
+                                fontSize: '0.7rem', 
+                                fontWeight: 700, 
+                                background: 'rgba(0, 240, 255, 0.1)',
+                                color: 'var(--neon-cyan)',
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                border: '1px solid rgba(0, 240, 255, 0.3)',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                cursor: activeFriendId === myFriendId ? 'pointer' : 'default'
+                              }}
+                              onClick={() => activeFriendId === myFriendId && onToggleSplit && onToggleSplit(activeFriend.id, artist.id, '')}
+                              title={activeFriendId === myFriendId ? "Click to remove split time" : "Split Set"}
+                            >
+                              ✂️ Split (Arrives Late) {activeFriendId === myFriendId && '✕'}
+                            </span>
+                          )}
+
                           <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                             <Clock size={12} />
                             {formatTimeStr(artist.startTime)} - {formatTimeStr(artist.endTime)}
@@ -381,6 +481,24 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({
                         }}
                       >
                         ⚡ Force Schedule
+                      </button>
+                    )}
+                    {activeFriend.id === myFriendId && onToggleSplit && (
+                      <button
+                        onClick={() => onToggleSplit(activeFriend.id, artist.id, conflictingWith.id)}
+                        className="btn"
+                        style={{
+                          padding: '3px 8px',
+                          fontSize: '0.7rem',
+                          borderRadius: '4px',
+                          borderColor: 'var(--neon-cyan)',
+                          color: 'var(--neon-cyan)',
+                          background: splits[activeFriend.id]?.includes(artist.id) 
+                            ? 'rgba(0, 240, 255, 0.15)' 
+                            : 'rgba(0, 240, 255, 0.05)',
+                        }}
+                      >
+                        ✂️ Split Set
                       </button>
                     )}
                   </div>

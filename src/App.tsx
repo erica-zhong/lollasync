@@ -46,6 +46,12 @@ const App: React.FC = () => {
     return saved ? JSON.parse(saved) : {};
   });
 
+  // --- SPLITS FOR OVERLAPPING SETS ---
+  const [splits, setSplits] = useState<Record<string, string[]>>(() => {
+    const saved = localStorage.getItem('lollasync_splits_v2');
+    return saved ? JSON.parse(saved) : {};
+  });
+
   // --- GOOGLE SHEETS LIVE SYNC STATE ---
   const [sheetsUrl, setSheetsUrl] = useState<string>(() => {
     const saved = localStorage.getItem('lollasync_sheets_url');
@@ -64,7 +70,8 @@ const App: React.FC = () => {
       const dataToShare = {
         friends,
         groupPreferences,
-        overrides
+        overrides,
+        splits
       };
       const jsonStr = JSON.stringify(dataToShare);
       const encoded = btoa(encodeURIComponent(jsonStr).replace(/%([0-9A-F]{2})/g, (_, p1) => {
@@ -129,6 +136,19 @@ const App: React.FC = () => {
               });
             }
 
+            if (sharedData.splits) {
+              setSplits(prev => {
+                const merged = { ...prev };
+                Object.keys(sharedData.splits).forEach(friendId => {
+                  merged[friendId] = Array.from(new Set([
+                    ...(merged[friendId] || []),
+                    ...sharedData.splits[friendId]
+                  ]));
+                });
+                return merged;
+              });
+            }
+
             alert('Squad schedules imported successfully!');
           }
         }
@@ -152,6 +172,10 @@ const App: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('lollasync_overrides_v2', JSON.stringify(overrides));
   }, [overrides]);
+
+  useEffect(() => {
+    localStorage.setItem('lollasync_splits_v2', JSON.stringify(splits));
+  }, [splits]);
 
   useEffect(() => {
     localStorage.setItem('lollasync_sheets_url', sheetsUrl);
@@ -190,6 +214,14 @@ const App: React.FC = () => {
             setOverrides(data.overrides);
           }
         }
+
+        if (data.splits) {
+          const splitsStr = JSON.stringify(data.splits);
+          const currentSplitsStr = JSON.stringify(splits);
+          if (splitsStr !== currentSplitsStr) {
+            setSplits(data.splits);
+          }
+        }
         
         setLastSyncStatus('Success');
         const now = new Date();
@@ -207,7 +239,8 @@ const App: React.FC = () => {
     url: string, 
     updatedFriends: Friend[], 
     updatedPrefs: GroupPreferences,
-    updatedOverrides: Record<string, string[]>
+    updatedOverrides: Record<string, string[]>,
+    updatedSplits: Record<string, string[]>
   ) => {
     if (!url) return;
     setLastSyncStatus('Saving...');
@@ -220,7 +253,8 @@ const App: React.FC = () => {
       body: JSON.stringify({
         friends: updatedFriends,
         groupPreferences: updatedPrefs,
-        overrides: updatedOverrides
+        overrides: updatedOverrides,
+        splits: updatedSplits
       })
     })
     .then(() => {
@@ -264,41 +298,14 @@ const App: React.FC = () => {
       };
 
       if (sheetsUrl && syncEnabled) {
-        saveStateToSheets(sheetsUrl, friends, updated, overrides);
+        saveStateToSheets(sheetsUrl, friends, updated, overrides, splits);
       }
 
       return updated;
     });
   };
 
-  const handleAddFriend = (name: string, color: string) => {
-    const cleanName = name.trim();
-    if (!cleanName) return;
 
-    const initials = cleanName
-      .split(' ')
-      .map(word => word[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-
-    const newId = cleanName.toLowerCase().replace(/\s+/g, '_') + '_' + Date.now();
-
-    const newFriend: Friend = {
-      id: newId,
-      name: cleanName,
-      color,
-      avatar: initials || cleanName[0].toUpperCase()
-    };
-
-    const updatedFriends = [...friends, newFriend];
-    setFriends(updatedFriends);
-    setActiveFriendId(newId);
-
-    if (sheetsUrl && syncEnabled) {
-      saveStateToSheets(sheetsUrl, updatedFriends, groupPreferences, overrides);
-    }
-  };
 
   const handleRemoveFriend = (id: string) => {
     if (id === 'me') return;
@@ -313,8 +320,12 @@ const App: React.FC = () => {
       delete updatedOverrides[id];
       setOverrides(updatedOverrides);
 
+      const updatedSplits = { ...splits };
+      delete updatedSplits[id];
+      setSplits(updatedSplits);
+
       if (sheetsUrl && syncEnabled) {
-        saveStateToSheets(sheetsUrl, updatedFriends, updatedPrefs, updatedOverrides);
+        saveStateToSheets(sheetsUrl, updatedFriends, updatedPrefs, updatedOverrides, updatedSplits);
       }
 
       return updatedPrefs;
@@ -339,9 +350,40 @@ const App: React.FC = () => {
         [friendId]: friendOverrides
       };
       if (sheetsUrl && syncEnabled) {
-        saveStateToSheets(sheetsUrl, friends, groupPreferences, updated);
+        saveStateToSheets(sheetsUrl, friends, groupPreferences, updated, splits);
       }
       return updated;
+    });
+  };
+
+  const handleToggleSplit = (friendId: string, artist1Id: string, artist2Id?: string) => {
+    setSplits(prev => {
+      const friendSplits = prev[friendId] ? [...prev[friendId]] : [];
+      
+      if (!artist2Id) {
+        const f = friendSplits.filter(id => id !== artist1Id);
+        if (sheetsUrl && syncEnabled) {
+          saveStateToSheets(sheetsUrl, friends, groupPreferences, overrides, { ...prev, [friendId]: f });
+        }
+        return { ...prev, [friendId]: f };
+      }
+
+      const contains1 = friendSplits.includes(artist1Id);
+      const contains2 = friendSplits.includes(artist2Id);
+
+      if (contains1 && contains2) {
+        const f = friendSplits.filter(id => id !== artist1Id && id !== artist2Id);
+        if (sheetsUrl && syncEnabled) {
+          saveStateToSheets(sheetsUrl, friends, groupPreferences, overrides, { ...prev, [friendId]: f });
+        }
+        return { ...prev, [friendId]: f };
+      } else {
+        const f = Array.from(new Set([...friendSplits, artist1Id, artist2Id]));
+        if (sheetsUrl && syncEnabled) {
+          saveStateToSheets(sheetsUrl, friends, groupPreferences, overrides, { ...prev, [friendId]: f });
+        }
+        return { ...prev, [friendId]: f };
+      }
     });
   };
 
@@ -419,7 +461,6 @@ const App: React.FC = () => {
             friends={friends}
             activeFriendId={activeFriendId}
             setActiveFriendId={setActiveFriendId}
-            onAddFriend={handleAddFriend}
             onRemoveFriend={handleRemoveFriend}
             myFriendId={myFriendId}
           />
@@ -545,6 +586,8 @@ const App: React.FC = () => {
               viewMode="personal"
               overrides={overrides}
               onToggleOverride={handleToggleOverride}
+              splits={splits}
+              onToggleSplit={handleToggleSplit}
               myFriendId={myFriendId}
             />
           )}
@@ -558,6 +601,8 @@ const App: React.FC = () => {
               viewMode="squad"
               overrides={overrides}
               onToggleOverride={handleToggleOverride}
+              splits={splits}
+              onToggleSplit={handleToggleSplit}
               myFriendId={myFriendId}
             />
           )}
@@ -606,7 +651,7 @@ const App: React.FC = () => {
                   setActiveFriendId('me');
                   setShowWelcomeModal(false);
                   if (sheetsUrl && syncEnabled) {
-                    saveStateToSheets(sheetsUrl, updatedFriends, groupPreferences, overrides);
+                    saveStateToSheets(sheetsUrl, updatedFriends, groupPreferences, overrides, splits);
                   }
                 } else {
                   // Create a new friend
@@ -625,7 +670,7 @@ const App: React.FC = () => {
                   setActiveFriendId(newId);
                   setShowWelcomeModal(false);
                   if (sheetsUrl && syncEnabled) {
-                    saveStateToSheets(sheetsUrl, updatedFriends, groupPreferences, overrides);
+                    saveStateToSheets(sheetsUrl, updatedFriends, groupPreferences, overrides, splits);
                   }
                 }
               }

@@ -175,6 +175,35 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({
     return { accepted, clashed, warnings };
   }, [artists, activeFriend.id, groupPreferences, overrides, splits]);
 
+  const clashPairs = useMemo(() => {
+    const { clashed, accepted } = personalSchedule;
+    const pairs: { first: Artist; second: Artist; firstScheduled: boolean; secondScheduled: boolean }[] = [];
+    const seen = new Set<string>();
+
+    clashed.forEach(({ artist, conflictingWith }) => {
+      const sortedIds = [artist.id, conflictingWith.id].sort();
+      const key = sortedIds.join('_');
+      if (!seen.has(key)) {
+        seen.add(key);
+        const [first, second] = artist.startMinutes <= conflictingWith.startMinutes 
+          ? [artist, conflictingWith] 
+          : [conflictingWith, artist];
+
+        const firstScheduled = accepted.some(a => a.id === first.id);
+        const secondScheduled = accepted.some(a => a.id === second.id);
+
+        pairs.push({
+          first,
+          second,
+          firstScheduled,
+          secondScheduled
+        });
+      }
+    });
+
+    return pairs;
+  }, [personalSchedule]);
+
   // ==========================================
   // SQUAD SYNC / OVERLAP CALCULATIONS
   // ==========================================
@@ -246,7 +275,7 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({
   // RENDER PERSONAL ITINERARY
   // ==========================================
   if (viewMode === 'personal') {
-    const { accepted, clashed, warnings } = personalSchedule;
+    const { accepted, warnings } = personalSchedule;
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -433,77 +462,120 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({
         )}
 
         {/* Display Clash/Skipped Artists */}
-        {clashed.length > 0 && (
+        {clashPairs.length > 0 && (
           <div className="glass-panel" style={{ padding: '20px', marginTop: '20px', borderStyle: 'dashed' }}>
             <h4 style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', fontSize: '0.95rem' }}>
               <AlertTriangle size={16} />
               Overlapping Conflicts Resolved (Skipped)
             </h4>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '12px' }}>
-              These selected sets were skipped because they overlapped with higher-priority artists.
+              These sets have overlapping schedules. Choose which one to force-schedule or split the time between them.
             </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {clashed.map(({ artist, conflictingWith }) => (
-                <div 
-                  key={artist.id} 
-                  style={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    background: 'rgba(255,255,255,0.01)', 
-                    padding: '8px 12px', 
-                    borderRadius: '6px',
-                    fontSize: '0.8rem',
-                    border: '1px solid var(--border-light)',
-                    alignItems: 'center',
-                    flexWrap: 'wrap',
-                    gap: '8px'
-                  }}
-                >
-                  <div>
-                    <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{artist.name}</span>
-                    <span style={{ color: 'var(--text-muted)' }}> ({artist.startTime} @ {artist.stage})</span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                    <div style={{ color: 'var(--text-muted)' }}>
-                      Clashes with <strong style={{ color: 'var(--neon-pink)' }}>{conflictingWith.name}</strong>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {clashPairs.map(({ first, second, firstScheduled, secondScheduled }) => {
+                const isSplit = splits[activeFriend.id]?.includes(first.id) && splits[activeFriend.id]?.includes(second.id);
+                return (
+                  <div 
+                    key={`${first.id}_${second.id}`} 
+                    style={{ 
+                      display: 'flex', 
+                      justifyContent: 'space-between', 
+                      background: 'rgba(255,255,255,0.01)', 
+                      padding: '10px 14px', 
+                      borderRadius: '8px',
+                      fontSize: '0.8rem',
+                      border: '1px solid var(--border-light)',
+                      alignItems: 'center',
+                      flexWrap: 'wrap',
+                      gap: '12px'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                      <span style={{ 
+                        color: firstScheduled ? 'var(--neon-yellow)' : 'var(--text-secondary)', 
+                        fontWeight: firstScheduled ? 600 : 400 
+                      }}>
+                        {first.name}
+                      </span>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>({first.startTime} @ {first.stage})</span>
+                      
+                      <span style={{ color: 'var(--text-muted)', margin: '0 4px', fontSize: '0.75rem' }}>vs</span>
+                      
+                      <span style={{ 
+                        color: secondScheduled ? 'var(--neon-yellow)' : 'var(--text-secondary)', 
+                        fontWeight: secondScheduled ? 600 : 400 
+                      }}>
+                        {second.name}
+                      </span>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>({second.startTime} @ {second.stage})</span>
                     </div>
-                    {activeFriend.id === myFriendId && onToggleOverride && (
-                      <button
-                        onClick={() => onToggleOverride(activeFriend.id, artist.id)}
-                        className="btn"
-                        style={{
-                          padding: '3px 8px',
-                          fontSize: '0.7rem',
-                          borderRadius: '4px',
-                          borderColor: 'var(--neon-yellow)',
-                          color: 'var(--neon-yellow)',
-                          background: 'rgba(255, 223, 0, 0.05)',
-                        }}
-                      >
-                        ⚡ Force Schedule
-                      </button>
-                    )}
-                    {activeFriend.id === myFriendId && onToggleSplit && (
-                      <button
-                        onClick={() => onToggleSplit(activeFriend.id, artist.id, conflictingWith.id)}
-                        className="btn"
-                        style={{
-                          padding: '3px 8px',
-                          fontSize: '0.7rem',
-                          borderRadius: '4px',
-                          borderColor: 'var(--neon-cyan)',
-                          color: 'var(--neon-cyan)',
-                          background: splits[activeFriend.id]?.includes(artist.id) 
-                            ? 'rgba(0, 240, 255, 0.15)' 
-                            : 'rgba(0, 240, 255, 0.05)',
-                        }}
-                      >
-                        ✂️ Split Set
-                      </button>
+
+                    {activeFriend.id === myFriendId && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        {/* Toggle button for first artist */}
+                        <button
+                          onClick={() => {
+                            if (!firstScheduled) {
+                              onToggleOverride && onToggleOverride(activeFriend.id, first.id);
+                            }
+                          }}
+                          className="btn"
+                          style={{
+                            padding: '3px 8px',
+                            fontSize: '0.7rem',
+                            borderRadius: '4px',
+                            borderColor: firstScheduled ? 'var(--neon-green)' : 'var(--border-light)',
+                            color: firstScheduled ? 'var(--neon-green)' : 'var(--text-muted)',
+                            background: firstScheduled ? 'rgba(57, 255, 20, 0.05)' : 'none',
+                            cursor: firstScheduled ? 'default' : 'pointer'
+                          }}
+                        >
+                          {firstScheduled ? '✓ Scheduled' : `⚡ Force ${first.name}`}
+                        </button>
+
+                        {/* Toggle button for second artist */}
+                        <button
+                          onClick={() => {
+                            if (!secondScheduled) {
+                              onToggleOverride && onToggleOverride(activeFriend.id, second.id);
+                            }
+                          }}
+                          className="btn"
+                          style={{
+                            padding: '3px 8px',
+                            fontSize: '0.7rem',
+                            borderRadius: '4px',
+                            borderColor: secondScheduled ? 'var(--neon-green)' : 'var(--border-light)',
+                            color: secondScheduled ? 'var(--neon-green)' : 'var(--text-muted)',
+                            background: secondScheduled ? 'rgba(57, 255, 20, 0.05)' : 'none',
+                            cursor: secondScheduled ? 'default' : 'pointer'
+                          }}
+                        >
+                          {secondScheduled ? '✓ Scheduled' : `⚡ Force ${second.name}`}
+                        </button>
+
+                        {/* Split Set Button */}
+                        {onToggleSplit && (
+                          <button
+                            onClick={() => onToggleSplit(activeFriend.id, first.id, second.id)}
+                            className="btn"
+                            style={{
+                              padding: '3px 8px',
+                              fontSize: '0.7rem',
+                              borderRadius: '4px',
+                              borderColor: 'var(--neon-cyan)',
+                              color: 'var(--neon-cyan)',
+                              background: isSplit ? 'rgba(0, 240, 255, 0.15)' : 'rgba(0, 240, 255, 0.05)',
+                            }}
+                          >
+                            ✂️ Split Set
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

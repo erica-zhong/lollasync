@@ -8,6 +8,7 @@ interface FriendSettingsProps {
   setActiveFriendId: (id: string) => void;
   onRemoveFriend: (id: string) => void;
   myFriendId: string | null;
+  isAdmin?: boolean;
 }
 
 export const FriendSettings: React.FC<FriendSettingsProps> = ({
@@ -15,7 +16,8 @@ export const FriendSettings: React.FC<FriendSettingsProps> = ({
   activeFriendId,
   setActiveFriendId,
   onRemoveFriend,
-  myFriendId
+  myFriendId,
+  isAdmin = false
 }) => {
   return (
     <div className="glass-panel" style={{ padding: '20px' }}>
@@ -56,7 +58,7 @@ export const FriendSettings: React.FC<FriendSettingsProps> = ({
                 </span>
               </div>
 
-              {friend.id !== 'me' && friend.id === myFriendId && (
+              {friend.id !== 'me' && (friend.id === myFriendId || isAdmin) && (
                 <button
                   className="trash-btn"
                   onClick={(e) => {

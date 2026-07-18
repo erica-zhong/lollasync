@@ -22,12 +22,19 @@ export const ArtistList: React.FC<ArtistListProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStage, setSelectedStage] = useState('All');
+  const [selectedGenre, setSelectedGenre] = useState('All');
   const [hypeFilter, setHypeFilter] = useState<HypeLevel | 'all'>('all');
 
   // Extract all unique stages in this active list
   const uniqueStages = useMemo(() => {
     const stages = new Set(artists.map(a => a.stage));
     return ['All', ...Array.from(stages).sort()];
+  }, [artists]);
+
+  // Extract all unique genres in this active list
+  const uniqueGenres = useMemo(() => {
+    const genres = new Set(artists.map(a => a.genre));
+    return ['All', ...Array.from(genres).sort()];
   }, [artists]);
 
   // Filter artists based on user input
@@ -45,9 +52,12 @@ export const ArtistList: React.FC<ArtistListProps> = ({
       const activePref = groupPreferences[activeFriend.id]?.[artist.id] || 'none';
       const matchesHype = hypeFilter === 'all' || activePref === hypeFilter;
 
-      return matchesSearch && matchesStage && matchesHype;
+      // 4. Genre Filter Match
+      const matchesGenre = selectedGenre === 'All' || artist.genre === selectedGenre;
+
+      return matchesSearch && matchesStage && matchesHype && matchesGenre;
     });
-  }, [artists, searchTerm, selectedStage, hypeFilter, activeFriend.id, groupPreferences]);
+  }, [artists, searchTerm, selectedStage, selectedGenre, hypeFilter, activeFriend.id, groupPreferences]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -97,6 +107,30 @@ export const ArtistList: React.FC<ArtistListProps> = ({
             >
               {uniqueStages.map(stage => (
                 <option key={stage} value={stage}>{stage}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Genre Dropdown */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: '150px' }}>
+            <SlidersHorizontal size={16} style={{ color: 'var(--text-muted)' }} />
+            <select
+              value={selectedGenre}
+              onChange={(e) => setSelectedGenre(e.target.value)}
+              style={{
+                flex: 1,
+                background: 'rgba(13, 16, 37, 0.9)',
+                border: '1px solid var(--border-light)',
+                borderRadius: '8px',
+                padding: '10px',
+                color: '#fff',
+                fontFamily: 'var(--font-body)',
+                fontSize: '0.9rem',
+                cursor: 'pointer'
+              }}
+            >
+              {uniqueGenres.map(genre => (
+                <option key={genre} value={genre}>{genre}</option>
               ))}
             </select>
           </div>

@@ -401,61 +401,83 @@ const App: React.FC = () => {
             </h4>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div>
-                <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
-                  Web App URL
-                </label>
-                <input
-                  type="text"
-                  value={sheetsUrl}
-                  onChange={(e) => setSheetsUrl(e.target.value)}
-                  placeholder="Paste script URL..."
-                  style={{
-                    width: '100%',
-                    background: 'rgba(255,255,255,0.03)',
-                    border: '1px solid var(--border-light)',
-                    borderRadius: '8px',
-                    padding: '8px 12px',
-                    color: '#fff',
-                    fontSize: '0.8rem',
-                    fontFamily: 'var(--font-body)'
-                  }}
-                />
-              </div>
+              {myFriendId === 'me' ? (
+                <>
+                  <div>
+                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
+                      Web App URL
+                    </label>
+                    <input
+                      type="text"
+                      value={sheetsUrl}
+                      onChange={(e) => setSheetsUrl(e.target.value)}
+                      placeholder="Paste script URL..."
+                      style={{
+                        width: '100%',
+                        background: 'rgba(255,255,255,0.03)',
+                        border: '1px solid var(--border-light)',
+                        borderRadius: '8px',
+                        padding: '8px 12px',
+                        color: '#fff',
+                        fontSize: '0.8rem',
+                        fontFamily: 'var(--font-body)'
+                      }}
+                    />
+                  </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.8rem' }}>
-                <span style={{ color: 'var(--text-secondary)' }}>
-                  Live Auto-Sync (10s):
-                </span>
-                <button
-                  onClick={() => setSyncEnabled(!syncEnabled)}
-                  className="btn"
-                  style={{ 
-                    padding: '4px 10px', 
-                    fontSize: '0.75rem', 
-                    borderRadius: '6px',
-                    borderColor: syncEnabled ? 'var(--neon-cyan)' : 'var(--border-light)',
-                    color: syncEnabled ? 'var(--neon-cyan)' : 'var(--text-muted)',
-                    background: syncEnabled ? 'rgba(0, 242, 254, 0.05)' : 'none'
-                  }}
-                >
-                  {syncEnabled ? 'ON' : 'OFF'}
-                </button>
-              </div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.8rem' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>
+                      Live Auto-Sync (10s):
+                    </span>
+                    <button
+                      onClick={() => setSyncEnabled(!syncEnabled)}
+                      className="btn"
+                      style={{ 
+                        padding: '4px 10px', 
+                        fontSize: '0.75rem', 
+                        borderRadius: '6px',
+                        borderColor: syncEnabled ? 'var(--neon-cyan)' : 'var(--border-light)',
+                        color: syncEnabled ? 'var(--neon-cyan)' : 'var(--text-muted)',
+                        background: syncEnabled ? 'rgba(0, 242, 254, 0.05)' : 'none'
+                      }}
+                    >
+                      {syncEnabled ? 'ON' : 'OFF'}
+                    </button>
+                  </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderTop: '1px solid var(--border-light)', paddingTop: '12px', marginTop: '4px' }}>
-                <button
-                  onClick={() => fetchFromSheets(sheetsUrl)}
-                  disabled={!sheetsUrl || lastSyncStatus === 'Syncing...'}
-                  className="btn"
-                  style={{ flex: 1, padding: '8px', fontSize: '0.75rem', justifyContent: 'center' }}
-                >
-                  Sync Now 🔄
-                </button>
-              </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderTop: '1px solid var(--border-light)', paddingTop: '12px', marginTop: '4px' }}>
+                    <button
+                      onClick={() => fetchFromSheets(sheetsUrl)}
+                      disabled={!sheetsUrl || lastSyncStatus === 'Syncing...'}
+                      className="btn"
+                      style={{ flex: 1, padding: '8px', fontSize: '0.75rem', justifyContent: 'center' }}
+                    >
+                      Sync Now 🔄
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.8rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>Database Connection:</span>
+                    <span style={{ 
+                      color: syncEnabled && sheetsUrl ? 'var(--neon-green)' : 'var(--text-muted)', 
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}>
+                      {syncEnabled && sheetsUrl ? '● Connected' : '○ Offline'}
+                    </span>
+                  </div>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', lineHeight: '1.3' }}>
+                    Your selections auto-save and sync with the squad in real-time.
+                  </p>
+                </div>
+              )}
 
-              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textAlign: 'center' }}>
-                Status: <strong style={{ color: lastSyncStatus === 'Success' ? 'var(--neon-cyan)' : lastSyncStatus === 'Error' ? 'var(--neon-pink)' : 'var(--neon-yellow)' }}>{lastSyncStatus}</strong>
+              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textAlign: 'center', borderTop: '1px solid var(--border-light)', paddingTop: '8px', marginTop: '4px' }}>
+                Sync Status: <strong style={{ color: lastSyncStatus === 'Success' ? 'var(--neon-cyan)' : lastSyncStatus === 'Error' ? 'var(--neon-pink)' : 'var(--neon-yellow)' }}>{lastSyncStatus}</strong>
                 {lastSyncTime && ` (${lastSyncTime})`}
               </div>
             </div>

@@ -512,39 +512,41 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({
 
                     {activeFriend.id === myFriendId && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                        {/* Toggle button for first artist */}
-                        <button
-                          onClick={() => onToggleOverride && onToggleOverride(activeFriend.id, first.id)}
-                          className="btn"
-                          style={{
-                            padding: '3px 8px',
-                            fontSize: '0.7rem',
-                            borderRadius: '4px',
-                            borderColor: firstScheduled ? 'var(--neon-green)' : 'rgba(255, 223, 0, 0.4)',
-                            color: firstScheduled ? 'var(--neon-green)' : 'var(--neon-yellow)',
-                            background: firstScheduled ? 'rgba(57, 255, 20, 0.05)' : 'rgba(255, 223, 0, 0.02)',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          {firstScheduled ? '✓ Scheduled' : `🔄 Swap to ${first.name}`}
-                        </button>
-
-                        {/* Toggle button for second artist */}
-                        <button
-                          onClick={() => onToggleOverride && onToggleOverride(activeFriend.id, second.id)}
-                          className="btn"
-                          style={{
-                            padding: '3px 8px',
-                            fontSize: '0.7rem',
-                            borderRadius: '4px',
-                            borderColor: secondScheduled ? 'var(--neon-green)' : 'rgba(255, 223, 0, 0.4)',
-                            color: secondScheduled ? 'var(--neon-green)' : 'var(--neon-yellow)',
-                            background: secondScheduled ? 'rgba(57, 255, 20, 0.05)' : 'rgba(255, 223, 0, 0.02)',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          {secondScheduled ? '✓ Scheduled' : `🔄 Swap to ${second.name}`}
-                        </button>
+                        {/* Show one swap button targeting the skipped artist */}
+                        {!firstScheduled && (
+                          <button
+                            onClick={() => onToggleOverride && onToggleOverride(activeFriend.id, first.id)}
+                            className="btn"
+                            style={{
+                              padding: '3px 8px',
+                              fontSize: '0.7rem',
+                              borderRadius: '4px',
+                              borderColor: 'rgba(255, 223, 0, 0.4)',
+                              color: 'var(--neon-yellow)',
+                              background: 'rgba(255, 223, 0, 0.02)',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            🔄 Swap to {first.name}
+                          </button>
+                        )}
+                        {!secondScheduled && (
+                          <button
+                            onClick={() => onToggleOverride && onToggleOverride(activeFriend.id, second.id)}
+                            className="btn"
+                            style={{
+                              padding: '3px 8px',
+                              fontSize: '0.7rem',
+                              borderRadius: '4px',
+                              borderColor: 'rgba(255, 223, 0, 0.4)',
+                              color: 'var(--neon-yellow)',
+                              background: 'rgba(255, 223, 0, 0.02)',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            🔄 Swap to {second.name}
+                          </button>
+                        )}
 
                         {/* Split Set Button */}
                         {onToggleSplit && (

@@ -137,7 +137,6 @@ const App: React.FC = () => {
         // Read latest states from refs
         const currentFriends = friendsRef.current;
         const currentPrefs = groupPreferencesRef.current;
-        const currentOverrides = overridesRef.current;
         const currentSplits = splitsRef.current;
         const currentMyFriendId = myFriendIdRef.current;
 
@@ -165,13 +164,7 @@ const App: React.FC = () => {
           setGroupPreferences(data.groupPreferences);
         }
 
-        if (data.overrides) {
-          const overridesStr = JSON.stringify(data.overrides);
-          const currentOverridesStr = JSON.stringify(currentOverrides);
-          if (overridesStr !== currentOverridesStr) {
-            setOverrides(data.overrides);
-          }
-        }
+        // NOTE: overrides are personal/local only - not synced from sheets
 
         if (data.splits) {
           const splitsStr = JSON.stringify(data.splits);
@@ -197,7 +190,6 @@ const App: React.FC = () => {
     url: string, 
     updatedFriends: Friend[], 
     updatedPrefs: GroupPreferences,
-    updatedOverrides: Record<string, string[]>,
     updatedSplits: Record<string, string[]>
   ) => {
     if (!url) return;
@@ -212,7 +204,6 @@ const App: React.FC = () => {
       body: JSON.stringify({
         friends: updatedFriends,
         groupPreferences: updatedPrefs,
-        overrides: updatedOverrides,
         splits: updatedSplits
       })
     })
@@ -257,7 +248,7 @@ const App: React.FC = () => {
       };
 
       if (sheetsUrl && syncEnabled) {
-        saveStateToSheets(sheetsUrl, friends, updated, overrides, splits);
+        saveStateToSheets(sheetsUrl, friends, updated, splits);
       }
 
       return updated;
@@ -284,7 +275,7 @@ const App: React.FC = () => {
       setSplits(updatedSplits);
 
       if (sheetsUrl && syncEnabled) {
-        saveStateToSheets(sheetsUrl, updatedFriends, updatedPrefs, updatedOverrides, updatedSplits);
+        saveStateToSheets(sheetsUrl, updatedFriends, updatedPrefs, updatedSplits);
       }
 
       return updatedPrefs;
@@ -308,9 +299,7 @@ const App: React.FC = () => {
         ...prev,
         [friendId]: friendOverrides
       };
-      if (sheetsUrl && syncEnabled) {
-        saveStateToSheets(sheetsUrl, friends, groupPreferences, updated, splits);
-      }
+      // overrides are local-only, no sheets sync needed
       return updated;
     });
   };
@@ -322,7 +311,7 @@ const App: React.FC = () => {
       if (!artist2Id) {
         const f = friendSplits.filter(id => id !== artist1Id);
         if (sheetsUrl && syncEnabled) {
-          saveStateToSheets(sheetsUrl, friends, groupPreferences, overrides, { ...prev, [friendId]: f });
+          saveStateToSheets(sheetsUrl, friends, groupPreferences, { ...prev, [friendId]: f });
         }
         return { ...prev, [friendId]: f };
       }
@@ -333,13 +322,13 @@ const App: React.FC = () => {
       if (contains1 && contains2) {
         const f = friendSplits.filter(id => id !== artist1Id && id !== artist2Id);
         if (sheetsUrl && syncEnabled) {
-          saveStateToSheets(sheetsUrl, friends, groupPreferences, overrides, { ...prev, [friendId]: f });
+          saveStateToSheets(sheetsUrl, friends, groupPreferences, { ...prev, [friendId]: f });
         }
         return { ...prev, [friendId]: f };
       } else {
         const f = Array.from(new Set([...friendSplits, artist1Id, artist2Id]));
         if (sheetsUrl && syncEnabled) {
-          saveStateToSheets(sheetsUrl, friends, groupPreferences, overrides, { ...prev, [friendId]: f });
+          saveStateToSheets(sheetsUrl, friends, groupPreferences, { ...prev, [friendId]: f });
         }
         return { ...prev, [friendId]: f };
       }
@@ -675,7 +664,7 @@ const App: React.FC = () => {
                   setActiveFriendId('me');
                   setShowWelcomeModal(false);
                   if (sheetsUrl && syncEnabled) {
-                    saveStateToSheets(sheetsUrl, updatedFriends, groupPreferences, overrides, splits);
+                    saveStateToSheets(sheetsUrl, updatedFriends, groupPreferences, splits);
                   }
                 } else {
                   // Create a new friend
@@ -694,7 +683,7 @@ const App: React.FC = () => {
                   setActiveFriendId(newId);
                   setShowWelcomeModal(false);
                   if (sheetsUrl && syncEnabled) {
-                    saveStateToSheets(sheetsUrl, updatedFriends, groupPreferences, overrides, splits);
+                    saveStateToSheets(sheetsUrl, updatedFriends, groupPreferences, splits);
                   }
                 }
               }

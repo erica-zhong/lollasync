@@ -6,70 +6,12 @@ import { ArtistList } from './components/ArtistList';
 import { ScheduleTimeline } from './components/ScheduleTimeline';
 import { Users, Calendar, Sparkles, MapPin, Share2 } from 'lucide-react';
 
-const LOCAL_STORAGE_KEY_FRIENDS = 'lollasync_friends_v1';
-const LOCAL_STORAGE_KEY_PREFS = 'lollasync_prefs_v1';
+const LOCAL_STORAGE_KEY_FRIENDS = 'lollasync_friends_v2';
+const LOCAL_STORAGE_KEY_PREFS = 'lollasync_prefs_v2';
 
-// Seed initial preferences to make the application immediately interesting on first load!
+// Seed initial preferences (now cleared to start fresh!)
 const getSeededPreferences = (): GroupPreferences => {
-  return {
-    me: {
-      'th-johnsummit': 'must',
-      'th-empire-of-the-sun': 'want',
-      'th-teddy': 'maybe',
-      'th-between-friends': 'want',
-      'fr-charlixcx': 'must',
-      'fr-zaralarsson': 'want',
-      'fr-yungblud': 'must',
-      'sa-jennie': 'must',
-      'sa-etheland': 'want',
-      'sa-hippocampus': 'maybe',
-      'su-thexx': 'must',
-      'su-yoasobi': 'must',
-      'su-beabadoobee': 'want'
-    },
-    alice: {
-      'th-johnsummit': 'must',
-      'th-wetleg': 'want',
-      'th-teddy': 'must',
-      'fr-smashingpumpkins': 'must',
-      'fr-liluzivert': 'must',
-      'fr-sukiwaterhouse': 'want',
-      'sa-oliviadean': 'must',
-      'sa-etheland': 'must',
-      'sa-deftones': 'maybe',
-      'su-tatemcrae': 'must',
-      'su-yoasobi': 'must',
-      'su-aespa': 'want'
-    },
-    bob: {
-      'th-lorde': 'must',
-      'th-empire-of-the-sun': 'must',
-      'th-teddy': 'want',
-      'fr-majorlazer': 'must',
-      'fr-zaralarsson': 'want',
-      'fr-nettspend': 'must',
-      'sa-discolines': 'must',
-      'sa-killermike': 'must',
-      'sa-fourtet': 'want',
-      'su-chainsmokers': 'must',
-      'su-turnstile': 'want',
-      'su-hotmulligan': 'must'
-    },
-    charlie: {
-      'th-fisher': 'must',
-      'th-wetleg': 'must',
-      'th-flo': 'want',
-      'fr-majorlazer': 'want',
-      'fr-slayyyter': 'must',
-      'fr-oklou': 'must',
-      'sa-discolines': 'must',
-      'sa-tvgirl': 'must',
-      'sa-fourtet': 'must',
-      'su-chainsmokers': 'want',
-      'su-dukedumont': 'must',
-      'su-yoasobi': 'want'
-    }
-  };
+  return {};
 };
 
 const App: React.FC = () => {

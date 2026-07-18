@@ -12,10 +12,7 @@ export const STAGES: Stage[] = [
 ];
 
 export const DEFAULT_FRIENDS: Friend[] = [
-  { id: 'me', name: 'Me (You)', color: '#FF007F', avatar: 'MY' },
-  { id: 'alice', name: 'Alice', color: '#00F0FF', avatar: 'AL' },
-  { id: 'bob', name: 'Bob', color: '#FFD700', avatar: 'BO' },
-  { id: 'charlie', name: 'Charlie', color: '#39FF14', avatar: 'CH' }
+  { id: 'me', name: 'Me (You)', color: '#FF007F', avatar: 'MY' }
 ];
 
 // Helper to convert "HH:MM" 24h time to minutes relative to 12:00 PM (noon)

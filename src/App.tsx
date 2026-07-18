@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Friend, GroupPreferences, HypeLevel } from './types';
 import { MOCK_ARTISTS, DEFAULT_FRIENDS } from './mockData';
 import { FriendSettings } from './components/FriendSettings';
@@ -160,6 +160,21 @@ const App: React.FC = () => {
     }
   }, []);
 
+  // Refs to prevent stale closures in async polling fetch
+  const friendsRef = useRef(friends);
+  const myFriendIdRef = useRef(myFriendId);
+  const groupPreferencesRef = useRef(groupPreferences);
+  const overridesRef = useRef(overrides);
+  const splitsRef = useRef(splits);
+
+  useEffect(() => {
+    friendsRef.current = friends;
+    myFriendIdRef.current = myFriendId;
+    groupPreferencesRef.current = groupPreferences;
+    overridesRef.current = overrides;
+    splitsRef.current = splits;
+  });
+
   // --- PERSISTENCE ---
   useEffect(() => {
     localStorage.setItem(LOCAL_STORAGE_KEY_FRIENDS, JSON.stringify(friends));
@@ -195,13 +210,32 @@ const App: React.FC = () => {
       const data = await response.json();
       
       if (data.friends && data.groupPreferences) {
-        const friendsStr = JSON.stringify(data.friends);
-        const currentFriendsStr = JSON.stringify(friends);
+        // Read latest states from refs
+        const currentFriends = friendsRef.current;
+        const currentPrefs = groupPreferencesRef.current;
+        const currentOverrides = overridesRef.current;
+        const currentSplits = splitsRef.current;
+        const currentMyFriendId = myFriendIdRef.current;
+
+        // Prevent race condition: ensure our own profile is never lost/deleted by incoming sync
+        let mergedFriends = [...data.friends];
+        if (currentMyFriendId) {
+          const hasSelf = data.friends.some((f: Friend) => f.id === currentMyFriendId);
+          if (!hasSelf) {
+            const localSelf = currentFriends.find(f => f.id === currentMyFriendId);
+            if (localSelf) {
+              mergedFriends.push(localSelf);
+            }
+          }
+        }
+
+        const friendsStr = JSON.stringify(mergedFriends);
+        const currentFriendsStr = JSON.stringify(currentFriends);
         const prefsStr = JSON.stringify(data.groupPreferences);
-        const currentPrefsStr = JSON.stringify(groupPreferences);
+        const currentPrefsStr = JSON.stringify(currentPrefs);
         
         if (friendsStr !== currentFriendsStr) {
-          setFriends(data.friends);
+          setFriends(mergedFriends);
         }
         if (prefsStr !== currentPrefsStr) {
           setGroupPreferences(data.groupPreferences);
@@ -209,7 +243,7 @@ const App: React.FC = () => {
 
         if (data.overrides) {
           const overridesStr = JSON.stringify(data.overrides);
-          const currentOverridesStr = JSON.stringify(overrides);
+          const currentOverridesStr = JSON.stringify(currentOverrides);
           if (overridesStr !== currentOverridesStr) {
             setOverrides(data.overrides);
           }
@@ -217,7 +251,7 @@ const App: React.FC = () => {
 
         if (data.splits) {
           const splitsStr = JSON.stringify(data.splits);
-          const currentSplitsStr = JSON.stringify(splits);
+          const currentSplitsStr = JSON.stringify(currentSplits);
           if (splitsStr !== currentSplitsStr) {
             setSplits(data.splits);
           }

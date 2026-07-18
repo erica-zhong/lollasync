@@ -28,7 +28,7 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({
   onToggleSplit,
   myFriendId = null
 }) => {
-  const activeFriend = friends.find(f => f.id === activeFriendId) || friends[0];
+  const activeFriend = friends.find(f => f.id === activeFriendId) || friends[0] || { id: 'me', name: 'Me (You)', color: '#FF007F', avatar: 'MY' };
 
   // ==========================================
   // HELPER ALGORITHM FOR CONFLICT RESOLUTION

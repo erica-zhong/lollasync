@@ -89,6 +89,18 @@ const App: React.FC = () => {
   const [viewMode, setViewMode] = useState<'lineup' | 'personal' | 'squad'>('lineup');
   const [shareStatus, setShareStatus] = useState<string>('Share Squad');
 
+  // --- GOOGLE SHEETS LIVE SYNC STATE ---
+  const [sheetsUrl, setSheetsUrl] = useState<string>(() => {
+    const saved = localStorage.getItem('lollasync_sheets_url');
+    return saved || 'https://script.google.com/macros/s/AKfycbyk0Qy6A-SnzuADe2sQhqh8bArcOwJq2oGvo19i8wSNPp8c96BT_JlakC5zKrr5yIQl/exec';
+  });
+  const [syncEnabled, setSyncEnabled] = useState<boolean>(() => {
+    const saved = localStorage.getItem('lollasync_sheets_enabled');
+    return saved ? JSON.parse(saved) : true;
+  });
+  const [lastSyncStatus, setLastSyncStatus] = useState<string>('Disconnected');
+  const [lastSyncTime, setLastSyncTime] = useState<string>('');
+
   // --- SHARE SQUAD LINK VIA URL ---
   const handleShareSquad = () => {
     try {
@@ -97,7 +109,6 @@ const App: React.FC = () => {
         groupPreferences
       };
       const jsonStr = JSON.stringify(dataToShare);
-      // Safe base64 encoding for Unicode characters
       const encoded = btoa(encodeURIComponent(jsonStr).replace(/%([0-9A-F]{2})/g, (_, p1) => {
         return String.fromCharCode(parseInt(p1, 16));
       }));
@@ -166,6 +177,87 @@ const App: React.FC = () => {
     localStorage.setItem(LOCAL_STORAGE_KEY_PREFS, JSON.stringify(groupPreferences));
   }, [groupPreferences]);
 
+  useEffect(() => {
+    localStorage.setItem('lollasync_sheets_url', sheetsUrl);
+  }, [sheetsUrl]);
+
+  useEffect(() => {
+    localStorage.setItem('lollasync_sheets_enabled', JSON.stringify(syncEnabled));
+  }, [syncEnabled]);
+
+  // --- GOOGLE SHEETS SYNC IMPLEMENTATION ---
+  const fetchFromSheets = async (url: string) => {
+    if (!url) return;
+    setLastSyncStatus('Syncing...');
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Network response not ok');
+      const data = await response.json();
+      
+      if (data.friends && data.groupPreferences) {
+        // Only update states if they differ to avoid re-rendering loops
+        const friendsStr = JSON.stringify(data.friends);
+        const currentFriendsStr = JSON.stringify(friends);
+        const prefsStr = JSON.stringify(data.groupPreferences);
+        const currentPrefsStr = JSON.stringify(groupPreferences);
+        
+        if (friendsStr !== currentFriendsStr) {
+          setFriends(data.friends);
+        }
+        if (prefsStr !== currentPrefsStr) {
+          setGroupPreferences(data.groupPreferences);
+        }
+        
+        setLastSyncStatus('Success');
+        const now = new Date();
+        setLastSyncTime(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+      } else {
+        setLastSyncStatus('Success (Empty)');
+      }
+    } catch (err) {
+      console.error('Error syncing from Google Sheets:', err);
+      setLastSyncStatus('Error');
+    }
+  };
+
+  const saveStateToSheets = (url: string, updatedFriends: Friend[], updatedPrefs: GroupPreferences) => {
+    if (!url) return;
+    setLastSyncStatus('Saving...');
+    fetch(url, {
+      method: 'POST',
+      mode: 'no-cors', // Avoids CORS redirects blockages from Google script response
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        friends: updatedFriends,
+        groupPreferences: updatedPrefs
+      })
+    })
+    .then(() => {
+      setLastSyncStatus('Success');
+      const now = new Date();
+      setLastSyncTime(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+    })
+    .catch((err) => {
+      console.error('Error saving to Google Sheets:', err);
+      setLastSyncStatus('Error');
+    });
+  };
+
+  // Polling hook to sync from Google Sheets periodically
+  useEffect(() => {
+    if (!sheetsUrl || !syncEnabled) return;
+
+    fetchFromSheets(sheetsUrl);
+
+    const interval = setInterval(() => {
+      fetchFromSheets(sheetsUrl);
+    }, 10000); // Poll every 10 seconds
+
+    return () => clearInterval(interval);
+  }, [sheetsUrl, syncEnabled]);
+
   // --- ACTIONS ---
   const handleSetPreference = (friendId: string, artistId: string, level: HypeLevel) => {
     setGroupPreferences(prev => {
@@ -177,10 +269,16 @@ const App: React.FC = () => {
         userPrefs[artistId] = level;
       }
 
-      return {
+      const updated = {
         ...prev,
         [friendId]: userPrefs
       };
+
+      if (sheetsUrl && syncEnabled) {
+        saveStateToSheets(sheetsUrl, friends, updated);
+      }
+
+      return updated;
     });
   };
 
@@ -188,7 +286,6 @@ const App: React.FC = () => {
     const cleanName = name.trim();
     if (!cleanName) return;
 
-    // Generate initials (up to 2 chars)
     const initials = cleanName
       .split(' ')
       .map(word => word[0])
@@ -205,18 +302,30 @@ const App: React.FC = () => {
       avatar: initials || cleanName[0].toUpperCase()
     };
 
-    setFriends(prev => [...prev, newFriend]);
+    const updatedFriends = [...friends, newFriend];
+    setFriends(updatedFriends);
     setActiveFriendId(newId);
+
+    if (sheetsUrl && syncEnabled) {
+      saveStateToSheets(sheetsUrl, updatedFriends, groupPreferences);
+    }
   };
 
   const handleRemoveFriend = (id: string) => {
-    if (id === 'me') return; // Cannot delete oneself
+    if (id === 'me') return;
     
-    setFriends(prev => prev.filter(f => f.id !== id));
+    const updatedFriends = friends.filter(f => f.id !== id);
+    setFriends(updatedFriends);
+    
     setGroupPreferences(prev => {
-      const updated = { ...prev };
-      delete updated[id];
-      return updated;
+      const updatedPrefs = { ...prev };
+      delete updatedPrefs[id];
+
+      if (sheetsUrl && syncEnabled) {
+        saveStateToSheets(sheetsUrl, updatedFriends, updatedPrefs);
+      }
+
+      return updatedPrefs;
     });
 
     if (activeFriendId === id) {
@@ -301,6 +410,75 @@ const App: React.FC = () => {
             onAddFriend={handleAddFriend}
             onRemoveFriend={handleRemoveFriend}
           />
+
+
+          {/* Google Sheets Live Sync Panel */}
+          <div className="glass-panel" style={{ padding: '20px' }}>
+            <h4 style={{ color: '#fff', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px', fontFamily: 'var(--font-display)' }}>
+              <span style={{ fontSize: '1.2rem' }}>📊</span>
+              Google Sheets Live Sync
+            </h4>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div>
+                <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
+                  Web App URL
+                </label>
+                <input
+                  type="text"
+                  value={sheetsUrl}
+                  onChange={(e) => setSheetsUrl(e.target.value)}
+                  placeholder="Paste script URL..."
+                  style={{
+                    width: '100%',
+                    background: 'rgba(255,255,255,0.03)',
+                    border: '1px solid var(--border-light)',
+                    borderRadius: '8px',
+                    padding: '8px 12px',
+                    color: '#fff',
+                    fontSize: '0.8rem',
+                    fontFamily: 'var(--font-body)'
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.8rem' }}>
+                <span style={{ color: 'var(--text-secondary)' }}>
+                  Live Auto-Sync (10s):
+                </span>
+                <button
+                  onClick={() => setSyncEnabled(!syncEnabled)}
+                  className="btn"
+                  style={{ 
+                    padding: '4px 10px', 
+                    fontSize: '0.75rem', 
+                    borderRadius: '6px',
+                    borderColor: syncEnabled ? 'var(--neon-cyan)' : 'var(--border-light)',
+                    color: syncEnabled ? 'var(--neon-cyan)' : 'var(--text-muted)',
+                    background: syncEnabled ? 'rgba(0, 242, 254, 0.05)' : 'none'
+                  }}
+                >
+                  {syncEnabled ? 'ON' : 'OFF'}
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderTop: '1px solid var(--border-light)', paddingTop: '12px', marginTop: '4px' }}>
+                <button
+                  onClick={() => fetchFromSheets(sheetsUrl)}
+                  disabled={!sheetsUrl || lastSyncStatus === 'Syncing...'}
+                  className="btn"
+                  style={{ flex: 1, padding: '8px', fontSize: '0.75rem', justifyContent: 'center' }}
+                >
+                  Sync Now 🔄
+                </button>
+              </div>
+
+              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textAlign: 'center' }}>
+                Status: <strong style={{ color: lastSyncStatus === 'Success' ? 'var(--neon-cyan)' : lastSyncStatus === 'Error' ? 'var(--neon-pink)' : 'var(--neon-yellow)' }}>{lastSyncStatus}</strong>
+                {lastSyncTime && ` (${lastSyncTime})`}
+              </div>
+            </div>
+          </div>
 
           {/* Quick Festival Info / Tip Card */}
           <div className="glass-panel" style={{ padding: '20px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>

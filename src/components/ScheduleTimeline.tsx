@@ -34,6 +34,8 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({
   type ClashPairEntry = { first: Artist; second: Artist; firstScheduled: boolean; secondScheduled: boolean };
   const [exitingPairs, setExitingPairs] = useState<Record<string, ClashPairEntry>>({});
   const prevClashKeysRef = useRef<Record<string, ClashPairEntry>>({});
+  // Track which artist ID is currently being swapped (for loading state)
+  const [swappingId, setSwappingId] = useState<string | null>(null);
 
   // ==========================================
   // HELPER ALGORITHM FOR CONFLICT RESOLUTION
@@ -581,40 +583,68 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({
                     {activeFriend.id === myFriendId && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                         {/* Show one swap button targeting the skipped artist */}
-                        {!firstScheduled && (
-                          <button
-                            onClick={() => onToggleOverride && onToggleOverride(activeFriend.id, first.id)}
-                            className="btn"
-                            style={{
-                              padding: '3px 8px',
-                              fontSize: '0.7rem',
-                              borderRadius: '4px',
-                              borderColor: 'rgba(255, 223, 0, 0.4)',
-                              color: 'var(--neon-yellow)',
-                              background: 'rgba(255, 223, 0, 0.02)',
-                              cursor: 'pointer'
-                            }}
-                          >
-                            🔄 Swap to {first.name}
-                          </button>
-                        )}
-                        {!secondScheduled && (
-                          <button
-                            onClick={() => onToggleOverride && onToggleOverride(activeFriend.id, second.id)}
-                            className="btn"
-                            style={{
-                              padding: '3px 8px',
-                              fontSize: '0.7rem',
-                              borderRadius: '4px',
-                              borderColor: 'rgba(255, 223, 0, 0.4)',
-                              color: 'var(--neon-yellow)',
-                              background: 'rgba(255, 223, 0, 0.02)',
-                              cursor: 'pointer'
-                            }}
-                          >
-                            🔄 Swap to {second.name}
-                          </button>
-                        )}
+                        {!firstScheduled && (() => {
+                          const isSwapping = swappingId === first.id;
+                          return (
+                            <button
+                              onClick={() => {
+                                if (!isSwapping) {
+                                  setSwappingId(first.id);
+                                  setTimeout(() => setSwappingId(null), 700);
+                                  onToggleOverride && onToggleOverride(activeFriend.id, first.id);
+                                }
+                              }}
+                              className="btn"
+                              disabled={isSwapping}
+                              style={{
+                                padding: '3px 8px',
+                                fontSize: '0.7rem',
+                                borderRadius: '4px',
+                                borderColor: isSwapping ? 'rgba(255,223,0,0.2)' : 'rgba(255,223,0,0.4)',
+                                color: isSwapping ? 'rgba(255,223,0,0.5)' : 'var(--neon-yellow)',
+                                background: isSwapping ? 'rgba(255,223,0,0.06)' : 'rgba(255,223,0,0.02)',
+                                cursor: isSwapping ? 'default' : 'pointer',
+                                transition: 'all 0.15s ease',
+                                display: 'flex', alignItems: 'center', gap: '5px'
+                              }}
+                            >
+                              {isSwapping
+                                ? <><span style={{ display: 'inline-block', width: 10, height: 10, border: '1.5px solid rgba(255,223,0,0.3)', borderTopColor: 'var(--neon-yellow)', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }} />Swapping...</>
+                                : `🔄 Swap to ${first.name}`}
+                            </button>
+                          );
+                        })()}
+                        {!secondScheduled && (() => {
+                          const isSwapping = swappingId === second.id;
+                          return (
+                            <button
+                              onClick={() => {
+                                if (!isSwapping) {
+                                  setSwappingId(second.id);
+                                  setTimeout(() => setSwappingId(null), 700);
+                                  onToggleOverride && onToggleOverride(activeFriend.id, second.id);
+                                }
+                              }}
+                              className="btn"
+                              disabled={isSwapping}
+                              style={{
+                                padding: '3px 8px',
+                                fontSize: '0.7rem',
+                                borderRadius: '4px',
+                                borderColor: isSwapping ? 'rgba(255,223,0,0.2)' : 'rgba(255,223,0,0.4)',
+                                color: isSwapping ? 'rgba(255,223,0,0.5)' : 'var(--neon-yellow)',
+                                background: isSwapping ? 'rgba(255,223,0,0.06)' : 'rgba(255,223,0,0.02)',
+                                cursor: isSwapping ? 'default' : 'pointer',
+                                transition: 'all 0.15s ease',
+                                display: 'flex', alignItems: 'center', gap: '5px'
+                              }}
+                            >
+                              {isSwapping
+                                ? <><span style={{ display: 'inline-block', width: 10, height: 10, border: '1.5px solid rgba(255,223,0,0.3)', borderTopColor: 'var(--neon-yellow)', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }} />Swapping...</>
+                                : `🔄 Swap to ${second.name}`}
+                            </button>
+                          );
+                        })()}
 
                         {/* Split Set Button */}
                         {onToggleSplit && (

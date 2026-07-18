@@ -4,7 +4,7 @@ import { MOCK_ARTISTS, DEFAULT_FRIENDS } from './mockData';
 import { FriendSettings } from './components/FriendSettings';
 import { ArtistList } from './components/ArtistList';
 import { ScheduleTimeline } from './components/ScheduleTimeline';
-import { Users, Calendar, Sparkles, MapPin } from 'lucide-react';
+import { Users, Calendar, Sparkles, MapPin, Share2 } from 'lucide-react';
 
 const LOCAL_STORAGE_KEY_FRIENDS = 'lollasync_friends_v1';
 const LOCAL_STORAGE_KEY_PREFS = 'lollasync_prefs_v1';
@@ -87,6 +87,75 @@ const App: React.FC = () => {
   const [activeFriendId, setActiveFriendId] = useState<string>('me');
   const [activeDay, setActiveDay] = useState<'Thursday' | 'Friday' | 'Saturday' | 'Sunday'>('Thursday');
   const [viewMode, setViewMode] = useState<'lineup' | 'personal' | 'squad'>('lineup');
+  const [shareStatus, setShareStatus] = useState<string>('Share Squad');
+
+  // --- SHARE SQUAD LINK VIA URL ---
+  const handleShareSquad = () => {
+    try {
+      const dataToShare = {
+        friends,
+        groupPreferences
+      };
+      const jsonStr = JSON.stringify(dataToShare);
+      // Safe base64 encoding for Unicode characters
+      const encoded = btoa(encodeURIComponent(jsonStr).replace(/%([0-9A-F]{2})/g, (_, p1) => {
+        return String.fromCharCode(parseInt(p1, 16));
+      }));
+      const shareUrl = `${window.location.origin}${window.location.pathname}?squad=${encoded}`;
+      navigator.clipboard.writeText(shareUrl);
+      setShareStatus('Link Copied! 📋');
+      setTimeout(() => setShareStatus('Share Squad'), 3000);
+    } catch (err) {
+      console.error('Failed to generate share link:', err);
+      alert('Failed to copy share link.');
+    }
+  };
+
+  // Check URL on load for shared squad schedule
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const squadParam = params.get('squad');
+    if (squadParam) {
+      try {
+        const decodedJson = decodeURIComponent(atob(squadParam).split('').map(c => {
+          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        
+        const sharedData = JSON.parse(decodedJson);
+        if (sharedData.friends && sharedData.groupPreferences) {
+          const confirmImport = window.confirm(
+            `Importing shared LollaSync squad schedule containing ${sharedData.friends.length} members. Do you want to merge it with your local schedules?`
+          );
+          
+          if (confirmImport) {
+            setFriends(prev => {
+              const prevMap = new Map(prev.map(f => [f.id, f]));
+              sharedData.friends.forEach((f: Friend) => {
+                prevMap.set(f.id, f);
+              });
+              return Array.from(prevMap.values());
+            });
+
+            setGroupPreferences(prev => {
+              const merged = { ...prev };
+              Object.keys(sharedData.groupPreferences).forEach(friendId => {
+                merged[friendId] = {
+                  ...(merged[friendId] || {}),
+                  ...sharedData.groupPreferences[friendId]
+                };
+              });
+              return merged;
+            });
+            alert('Squad schedules imported successfully!');
+          }
+        }
+      } catch (err) {
+        console.error('Failed to parse shared squad link:', err);
+      } finally {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
+  }, []);
 
   // --- PERSISTENCE ---
   useEffect(() => {
@@ -200,6 +269,20 @@ const App: React.FC = () => {
           >
             <Users size={16} />
             <span>3. Squad Sync</span>
+          </button>
+
+          <button 
+            className="btn"
+            onClick={handleShareSquad}
+            style={{ 
+              borderColor: 'var(--neon-yellow)', 
+              color: 'var(--neon-yellow)',
+              background: 'rgba(255, 223, 0, 0.05)',
+              boxShadow: shareStatus.includes('Copied') ? '0 0 10px var(--neon-yellow-glow)' : 'none'
+            }}
+          >
+            <Share2 size={16} />
+            <span>{shareStatus}</span>
           </button>
         </nav>
       </header>

@@ -103,6 +103,11 @@ export const ArtistList: React.FC<ArtistListProps> = ({
     return () => observer.disconnect();
   }, [filteredArtists]);
 
+  // Scroll to top of page when filters change
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' as any });
+  }, [selectedStage, selectedGenre, searchTerm, hypeFilter]);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       

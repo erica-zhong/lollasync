@@ -41,9 +41,9 @@
 
   /* Sticky Offsets */
   --sticky-header-top: 12px;
-  --sticky-nav-top: 88px;
-  --sticky-separator-top: 132px;
-  --scroll-jump-offset: 140px;
+  --sticky-nav-top: 98px;
+  --sticky-separator-top: 142px;
+  --scroll-jump-offset: 150px;
 }
 
 /* Clash card animations */

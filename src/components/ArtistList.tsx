@@ -252,6 +252,8 @@ export const ArtistList: React.FC<ArtistListProps> = ({
           paddingTop: '12px',
           paddingBottom: '8px',
           marginTop: '-8px',
+          width: '100%',
+          maxWidth: '100%',
         }}>
           {uniqueFilteredStages.map(stage => (
             <button

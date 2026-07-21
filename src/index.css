@@ -840,16 +840,16 @@ h1, h2, h3, h4, h5, h6 {
   }
 
   .hype-filter-row {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    display: flex;
     gap: 6px;
+    flex-wrap: wrap;
     width: 100%;
   }
 
   .hype-filter-row button {
     justify-content: center;
-    padding: 6px 4px !important;
-    font-size: 0.7rem !important;
+    padding: 6px 10px !important;
+    font-size: 0.72rem !important;
   }
   
   .squad-time-slot {

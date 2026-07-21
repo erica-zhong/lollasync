@@ -81,12 +81,15 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({
         return b.priorityWeight - a.priorityWeight;
       });
 
+    // Process using a queue so displaced artists get re-evaluated
+    const queue = [...selected];
     const accepted: any[] = [];
-    const clashed: { artist: Artist; conflictingWith: Artist }[] = [];
+    const clashed: { artist: any; conflictingWith: any }[] = [];
 
-    selected.forEach(candidate => {
+    while (queue.length > 0) {
+      const candidate = queue.shift()!;
       let conflictWith: any = null;
-      
+
       for (const acceptedAct of accepted) {
         const overlap = candidate.startMinutes < acceptedAct.endMinutes && candidate.endMinutes > acceptedAct.startMinutes;
         if (overlap) {
@@ -97,6 +100,7 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({
 
       if (!conflictWith) {
         accepted.push(candidate);
+        accepted.sort((a, b) => a.startMinutes - b.startMinutes);
       } else {
         // Resolve with Split if requested for both
         if (candidate.isSplitRequested && conflictWith.isSplitRequested) {
@@ -128,7 +132,7 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({
 
             accepted.push(candidate);
             accepted.sort((a, b) => a.startMinutes - b.startMinutes);
-            return;
+            continue;
           }
         }
 
@@ -136,9 +140,10 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({
         const acceptedWeight = conflictWith.priorityWeight || 0;
 
         if (candidateWeight > acceptedWeight) {
+          // Candidate wins: remove the accepted artist and re-evaluate it
           const index = accepted.indexOf(conflictWith);
           accepted.splice(index, 1);
-          
+
           if (conflictWith.isSplitActive) {
             conflictWith.startTime = conflictWith.originalStartTime;
             conflictWith.endTime = conflictWith.originalEndTime;
@@ -149,13 +154,14 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({
           }
 
           accepted.push(candidate);
-          clashed.push({ artist: conflictWith, conflictingWith: candidate });
           accepted.sort((a, b) => a.startMinutes - b.startMinutes);
+          // Put displaced artist back in queue to be re-evaluated
+          queue.unshift(conflictWith);
         } else {
           clashed.push({ artist: candidate, conflictingWith: conflictWith });
         }
       }
-    });
+    }
 
     return { accepted, clashed };
   };

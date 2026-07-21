@@ -252,10 +252,10 @@ const App: React.FC = () => {
     return () => clearInterval(interval);
   }, [sheetsUrl, syncEnabled]);
 
-  // Scroll to top of page when main tabs, days, or active profiles change
+  // Scroll to top of page when main tabs or active profiles change
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' as any });
-  }, [viewMode, activeDay, activeFriendId]);
+  }, [viewMode, activeFriendId]);
 
   // --- ACTIONS ---
   const handleSetPreference = (friendId: string, artistId: string, level: HypeLevel) => {

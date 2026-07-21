@@ -284,7 +284,7 @@ const App: React.FC = () => {
 
 
   const handleRemoveFriend = (id: string) => {
-    if (id === 'me') return;
+    if (id === 'me' && friends.length <= 1) return;
     
     const updatedFriends = friends.filter(f => f.id !== id);
     setFriends(updatedFriends);
@@ -399,9 +399,9 @@ const App: React.FC = () => {
     return MOCK_ARTISTS.filter(a => a.day === activeDay);
   }, [activeDay]);
 
-  const currentMeFriend = friends.find(f => f.id === myFriendId);
-  const isAdmin = currentMeFriend?.name.toLowerCase() === 'erica';
   const activeFriend = friends.find(f => f.id === activeFriendId) || friends[0] || DEFAULT_FRIENDS[0];
+  const currentMeFriend = friends.find(f => f.id === myFriendId);
+  const isAdmin = currentMeFriend?.name.toLowerCase() === 'erica' || activeFriend?.name.toLowerCase() === 'erica';
 
   return (
     <div className="app-container">

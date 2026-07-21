@@ -58,7 +58,7 @@ export const FriendSettings: React.FC<FriendSettingsProps> = ({
                 </span>
               </div>
 
-              {friend.id !== 'me' && (friend.id === myFriendId || isAdmin) && (
+              {(friend.id !== 'me' || friends.length > 1) && (friend.id === myFriendId || isAdmin) && (
                 <button
                   className="trash-btn"
                   onClick={(e) => {

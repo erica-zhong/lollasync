@@ -85,22 +85,47 @@ export const ArtistList: React.FC<ArtistListProps> = ({
     setActiveStage(uniqueFilteredStages[0] ?? '');
   }, [uniqueFilteredStages]);
 
-  // IntersectionObserver: highlight whichever stage header is nearest the top
+  // Scrollspy: highlight active stage header closest to current scroll position
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            setActiveStage(entry.target.getAttribute('data-stage') ?? '');
-            break;
-          }
+    let active = true;
+    const handleScroll = () => {
+      if (!active) return;
+      
+      const stageElements = Object.entries(stageRefs.current)
+        .map(([stage, el]) => ({ stage, el }))
+        .filter(item => item.el !== null) as { stage: string; el: HTMLDivElement }[];
+
+      if (stageElements.length === 0) return;
+
+      // Sort by offsetTop to guarantee chronological order
+      stageElements.sort((a, b) => a.el.offsetTop - b.el.offsetTop);
+
+      const isMobile = window.innerWidth <= 768;
+      const buffer = isMobile ? 110 : 160;
+      const scrollY = window.scrollY;
+      
+      let current = stageElements[0].stage;
+      for (const { stage, el } of stageElements) {
+        if (el.offsetTop - buffer <= scrollY) {
+          current = stage;
+        } else {
+          break;
         }
-      },
-      { rootMargin: '-10px 0px -80% 0px', threshold: 0 }
-    );
-    const refs = stageRefs.current;
-    Object.values(refs).forEach(el => el && observer.observe(el));
-    return () => observer.disconnect();
+      }
+      setActiveStage(current);
+    };
+
+    const onScroll = () => {
+      window.requestAnimationFrame(handleScroll);
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    handleScroll();
+    
+    return () => {
+      active = false;
+      window.removeEventListener('scroll', onScroll);
+    };
   }, [filteredArtists]);
 
   // Scroll to top of page when filters change

@@ -419,7 +419,7 @@ const App: React.FC = () => {
             onClick={() => setViewMode('lineup')}
           >
             <Calendar size={16} />
-            <span>1. Preference Setup</span>
+            <span>Setup</span>
           </button>
           
           <button 
@@ -427,7 +427,7 @@ const App: React.FC = () => {
             onClick={() => setViewMode('personal')}
           >
             <Sparkles size={16} />
-            <span>2. Personal Itinerary</span>
+            <span>Itinerary</span>
           </button>
           
           <button 
@@ -435,10 +435,8 @@ const App: React.FC = () => {
             onClick={() => setViewMode('squad')}
           >
             <Users size={16} />
-            <span>3. Squad Sync</span>
+            <span>Squad Sync</span>
           </button>
-
-
         </nav>
       </header>
 

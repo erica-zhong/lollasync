@@ -378,9 +378,9 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({
                   <div className="timeline-node" style={{ borderColor: activeFriend.color }} />
                   
                   <div className="timeline-card">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '8px' }}>
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div className="timeline-card-header">
+                      <div className="timeline-card-info">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                           <span 
                             style={{ 
                               fontSize: '0.7rem', 
@@ -471,7 +471,7 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({
                         </h4>
                       </div>
 
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                      <div className="timeline-card-meta">
                         <span style={{ fontSize: '0.85rem', color: '#fff', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
                           <MapPin size={14} style={{ color: activeFriend.color }} />
                           {artist.stage}
@@ -527,21 +527,9 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({
               {Object.entries(exitingPairs).map(([pairKey, { first, second }]) => (
                 <div
                   key={`exit_${pairKey}`}
-                  className="clash-card-exit"
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    background: 'rgba(255,255,255,0.01)',
-                    padding: '10px 14px',
-                    borderRadius: '8px',
-                    fontSize: '0.8rem',
-                    border: '1px solid var(--border-light)',
-                    alignItems: 'center',
-                    flexWrap: 'wrap',
-                    gap: '12px'
-                  }}
+                  className="clash-card clash-card-exit"
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                  <div className="clash-card-info">
                     <span style={{ color: 'var(--text-secondary)' }}>{first.name}</span>
                     <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>({first.startTime} @ {first.stage})</span>
                     <span style={{ color: 'var(--text-muted)', margin: '0 4px', fontSize: '0.75rem' }}>vs</span>
@@ -561,21 +549,9 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({
                 return (
                   <div 
                     key={`${first.id}_${second.id}`}
-                    className="clash-card-enter"
-                    style={{ 
-                      display: 'flex', 
-                      justifyContent: 'space-between', 
-                      background: 'rgba(255,255,255,0.01)', 
-                      padding: '10px 14px', 
-                      borderRadius: '8px',
-                      fontSize: '0.8rem',
-                      border: '1px solid var(--border-light)',
-                      alignItems: 'center',
-                      flexWrap: 'wrap',
-                      gap: '12px'
-                    }}
+                    className="clash-card clash-card-enter"
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                    <div className="clash-card-info">
                       <span style={{ 
                         color: firstScheduled ? 'var(--neon-yellow)' : 'var(--text-secondary)', 
                         fontWeight: firstScheduled ? 600 : 400 
@@ -596,7 +572,7 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({
                     </div>
 
                     {activeFriend.id === myFriendId && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <div className="clash-card-actions">
                         {/* Show one swap button targeting the skipped artist */}
                         {!firstScheduled && (() => {
                           const isSwapping = swappingId === first.id;

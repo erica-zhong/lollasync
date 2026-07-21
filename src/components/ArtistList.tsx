@@ -108,10 +108,10 @@ export const ArtistList: React.FC<ArtistListProps> = ({
       
       {/* Search & Filters Row */}
       <div className="glass-panel" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+        <div className="filter-controls-row">
           
           {/* Text Search */}
-          <div style={{ position: 'relative', flex: 1, minWidth: '200px' }}>
+          <div className="filter-input-wrapper">
             <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
             <input
               type="text"
@@ -132,7 +132,7 @@ export const ArtistList: React.FC<ArtistListProps> = ({
           </div>
 
           {/* Stage Dropdown */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: '150px' }}>
+          <div className="filter-dropdown-wrapper">
             <SlidersHorizontal size={16} style={{ color: 'var(--text-muted)' }} />
             <select
               value={selectedStage}
@@ -156,7 +156,7 @@ export const ArtistList: React.FC<ArtistListProps> = ({
           </div>
 
           {/* Genre Dropdown */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: '150px' }}>
+          <div className="filter-dropdown-wrapper">
             <SlidersHorizontal size={16} style={{ color: 'var(--text-muted)' }} />
             <select
               value={selectedGenre}
@@ -181,7 +181,7 @@ export const ArtistList: React.FC<ArtistListProps> = ({
         </div>
 
         {/* Hype Level Fast Filter */}
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div className="hype-filter-row">
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Filter Selections:</span>
           <button
             onClick={() => setHypeFilter('all')}
@@ -215,7 +215,7 @@ export const ArtistList: React.FC<ArtistListProps> = ({
           overflowX: 'auto',
           scrollbarWidth: 'none',
           position: 'sticky',
-          top: '88px',
+          top: 'var(--sticky-nav-top)',
           zIndex: 12,
           background: 'var(--bg-base)',
           borderTop: '1px solid var(--border-light)',
@@ -229,7 +229,9 @@ export const ArtistList: React.FC<ArtistListProps> = ({
               onClick={() => {
                 const el = stageRefs.current[stage];
                 if (el) {
-                  const top = el.getBoundingClientRect().top + window.scrollY - 140;
+                  const isMobile = window.innerWidth <= 768;
+                  const offset = isMobile ? 95 : 140;
+                  const top = el.getBoundingClientRect().top + window.scrollY - offset;
                   window.scrollTo({ top, behavior: 'smooth' });
                 }
               }}
@@ -334,7 +336,7 @@ export const ArtistList: React.FC<ArtistListProps> = ({
                       border: '1px solid rgba(0, 240, 255, 0.12)',
                       borderRadius: '10px',
                       position: 'sticky',
-                      top: '132px',
+                      top: 'var(--sticky-separator-top)',
                       zIndex: 10,
                     }}>
                     <span style={{ fontSize: '1.4rem', lineHeight: 1 }}>

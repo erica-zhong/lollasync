@@ -38,6 +38,12 @@
   /* Transitions */
   --transition-fast: 0.15s ease;
   --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Sticky Offsets */
+  --sticky-header-top: 12px;
+  --sticky-nav-top: 88px;
+  --sticky-separator-top: 132px;
+  --scroll-jump-offset: 140px;
 }
 
 /* Clash card animations */
@@ -162,7 +168,7 @@ h1, h2, h3, h4, h5, h6 {
   margin-bottom: 24px;
   padding: 16px 24px;
   position: sticky;
-  top: 12px;
+  top: var(--sticky-header-top);
   z-index: 100;
 }
 
@@ -686,8 +692,131 @@ h1, h2, h3, h4, h5, h6 {
   75% { transform: rotate(8deg); }
 }
 
+/* Layout & Responsive utilities */
+.filter-controls-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.filter-input-wrapper {
+  position: relative;
+  flex: 1;
+  min-width: 200px;
+}
+
+.filter-dropdown-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 150px;
+}
+
+.hype-filter-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.timeline-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.timeline-card-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.timeline-card-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.clash-card {
+  display: flex;
+  justify-content: space-between;
+  background: rgba(255, 255, 255, 0.01);
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  border: 1px solid var(--border-light);
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.clash-card-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.clash-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 /* Responsive fixes */
+@media (max-width: 1024px) {
+  .sidebar {
+    position: relative;
+    top: 0;
+  }
+}
+
 @media (max-width: 768px) {
+  :root {
+    --sticky-header-top: 0px;
+    --sticky-nav-top: 0px;
+    --sticky-separator-top: 44px;
+    --scroll-jump-offset: 95px;
+  }
+
+  .app-header {
+    position: relative;
+    top: 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+    padding: 16px;
+  }
+
+  .brand {
+    justify-content: center;
+    text-align: center;
+  }
+
+  .nav-controls {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    width: 100%;
+  }
+
+  .nav-controls .btn {
+    padding: 8px 4px;
+    font-size: 0.72rem;
+    flex-direction: column;
+    gap: 4px;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .nav-controls .btn span {
+    font-size: 0.7rem;
+  }
+
   .artist-card {
     grid-template-columns: 1fr;
     gap: 12px;
@@ -695,6 +824,34 @@ h1, h2, h3, h4, h5, h6 {
   
   .hype-selector {
     justify-content: flex-start;
+  }
+
+  .filter-controls-row {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .filter-input-wrapper {
+    flex: none;
+    width: 100%;
+  }
+
+  .filter-dropdown-wrapper {
+    flex: 1;
+    min-width: 130px;
+  }
+
+  .hype-filter-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    width: 100%;
+  }
+
+  .hype-filter-row button {
+    justify-content: center;
+    padding: 6px 4px !important;
+    font-size: 0.7rem !important;
   }
   
   .squad-time-slot {
@@ -707,6 +864,35 @@ h1, h2, h3, h4, h5, h6 {
     border-bottom: 1px solid var(--border-light);
     padding-right: 0;
     padding-bottom: 10px;
+  }
+
+  .timeline-card-meta {
+    align-items: flex-start;
+    width: 100%;
+    border-top: 1px solid var(--border-light);
+    padding-top: 8px;
+    margin-top: 6px;
+  }
+
+  .clash-card {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 12px;
+  }
+
+  .clash-card-actions {
+    justify-content: flex-end;
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .hype-btn {
+    padding: 8px 4px;
+    font-size: 0.72rem;
+    gap: 4px;
+    justify-content: center;
+    flex: 1;
   }
 }
 
